@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  AGENT
+  ADMIN
+}
+
+enum AdminRole {
+  SUPER
+  OPERATIONS
+  COMPLIANCE
+  FINANCE
+}
+
+// Guest has no account and therefore no row here — it's the absence of a session.
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique
+  passwordHash    String
+  role            Role
+  adminRole       AdminRole?
+  firstName       String
+  lastName        String
+  phone           String?
+  isActive        Boolean    @default(true)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  agentProfile    AgentProfile?
+  twoFactorSecret TwoFactorSecret?
+  refreshTokens   RefreshToken[]
+  auditLogs       AuditLog[]
+
+  @@map("users")
+}
+
+// Minimal stub — full agent management (licensing workflow, assignment) lands in Phase 4.
+model AgentProfile {
+  userId        String   @id
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber String
+  regions       String[]
+  isActive      Boolean  @default(true)
+
+  @@map("agent_profiles")
+}
+
+model TwoFactorSecret {
+  userId    String    @id
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secret    String
+  enabledAt DateTime?
+
+  @@map("two_factor_secrets")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  // Points at the token this one was rotated into, so a near-simultaneous
+  // duplicate refresh call (e.g. React StrictMode's double-invoked mount
+  // effect, or two tabs refreshing around the same moment) can be resolved
+  // forward instead of failing the session — see refreshSession().
+  replacedByTokenId String?       @unique
+  replacedBy        RefreshToken? @relation("TokenRotation", fields: [replacedByTokenId], references: [id])
+  replacedFrom      RefreshToken? @relation("TokenRotation")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  action      String
+  entityType  String
+  entityId    String?
+  metadata    Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([action])
+  @@map("audit_logs")
+}
