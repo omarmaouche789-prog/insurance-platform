@@ -12,6 +12,8 @@ import { usersRouter } from "./modules/users/users.routes";
 
 export function createApp() {
   const app = express();
+  // Behind Render/Vercel proxies, so req.ip (audit logs) is the client, not the proxy.
+  if (env.trustProxyHops > 0) app.set("trust proxy", env.trustProxyHops);
 
   app.use(cors({ origin: env.webOrigin, credentials: true }));
   app.use(express.json());

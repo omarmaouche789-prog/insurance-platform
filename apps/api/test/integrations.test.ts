@@ -4,7 +4,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { LocalDiskStorageAdapter } from "../src/integrations/documentStorage";
 import { CarrierUnavailableError, MockCarrierSubmissionAdapter } from "../src/integrations/carrierSubmission";
-import { MockNotificationAdapter } from "../src/integrations/notifications";
+import { LogEmailTransport } from "../src/integrations/email";
 
 describe("LocalDiskStorageAdapter", () => {
   let root: string;
@@ -16,7 +16,7 @@ describe("LocalDiskStorageAdapter", () => {
 
   it("stores, reads back, and deletes a file under nested keys", async () => {
     root = await fs.mkdtemp(path.join(os.tmpdir(), "storage-test-"));
-    await adapter().put("applications/a1/doc.pdf", Buffer.from("%PDF-data"));
+    await adapter().put("applications/a1/doc.pdf", Buffer.from("%PDF-data"), "application/pdf");
     expect((await adapter().get("applications/a1/doc.pdf")).toString()).toBe("%PDF-data");
 
     await adapter().delete("applications/a1/doc.pdf");
@@ -25,7 +25,7 @@ describe("LocalDiskStorageAdapter", () => {
 
   it("refuses keys that would escape the storage root", async () => {
     root ??= await fs.mkdtemp(path.join(os.tmpdir(), "storage-test-"));
-    await expect(adapter().put("../escape.txt", Buffer.from("x"))).rejects.toThrow("Invalid storage key");
+    await expect(adapter().put("../escape.txt", Buffer.from("x"), "text/plain")).rejects.toThrow("Invalid storage key");
     await expect(adapter().get("/etc/passwd")).rejects.toThrow("Invalid storage key");
   });
 });
@@ -60,11 +60,14 @@ describe("MockCarrierSubmissionAdapter", () => {
   });
 });
 
-describe("MockNotificationAdapter", () => {
-  it("records what it sent", async () => {
-    const adapter = new MockNotificationAdapter();
-    vi.spyOn(console, "info").mockImplementation(() => undefined);
-    await adapter.send({ to: "a@example.com", subject: "s", body: "b" });
-    expect(adapter.sent).toEqual([{ to: "a@example.com", subject: "s", body: "b" }]);
+describe("LogEmailTransport", () => {
+  it("records what it sent and logs a masked recipient", async () => {
+    const transport = new LogEmailTransport();
+    const info = vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const message = { to: "alice@example.com", subject: "s", text: "t", html: "<p>t</p>" };
+    await transport.send(message);
+    expect(transport.sent).toEqual([message]);
+    expect(info.mock.calls[0][0]).toContain("a***@example.com");
+    expect(info.mock.calls[0][0]).not.toContain("alice@");
   });
 });

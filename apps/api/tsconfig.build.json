@@ -1,0 +1,9 @@
+{
+  // Production build: just src/, so the output is dist/server.js (the base
+  // tsconfig also covers prisma/ and test/ for typechecking and emits dist/src/).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "src"
+  },
+  "include": ["src"]
+}

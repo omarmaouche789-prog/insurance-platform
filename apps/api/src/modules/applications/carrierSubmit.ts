@@ -5,8 +5,14 @@ import { prisma } from "../../lib/prisma";
 import { recordAuditEvent } from "../../lib/audit";
 import { decryptField, decryptJson } from "../../lib/fieldCrypto";
 import { HttpError } from "../../middleware/errorHandler";
-import { carrierSubmission, type CarrierSubmissionResult } from "../../integrations/carrierSubmission";
-import { notifications } from "../../integrations/notifications";
+import {
+  carrierSubmission,
+  CarrierSubmissionError,
+  type CarrierCallMeta,
+  type CarrierSubmissionResult,
+} from "../../integrations/carrierSubmission";
+import { email } from "../../integrations/email";
+import { emailTemplates } from "../../integrations/emailTemplates";
 import { commissionAmountCents } from "../agent/commissions";
 
 type SubmittableApplication = Application & {
@@ -24,6 +30,44 @@ interface SendOptions {
   auditAction: "application.submit" | "application.resubmit";
 }
 
+const MAX_AUDITED_MESSAGE = 500;
+
+// One audit row per carrier response (or failure to get one), with transport
+// details for debugging integrations. PHI-free: the payload is never logged.
+export async function recordCarrierResponse(
+  applicationId: string,
+  actorUserId: string,
+  req: Request,
+  details: {
+    operation: "submit" | "decision";
+    carrierCode: string;
+    outcome: "ACCEPTED" | "REJECTED" | "ERROR" | "NOTIFIED";
+    attempt?: number;
+    reference?: string | null;
+    message?: string | null;
+    retryable?: boolean;
+    meta: CarrierCallMeta | null | undefined;
+  },
+): Promise<void> {
+  const { meta, ...rest } = details;
+  await recordAuditEvent({
+    actorUserId,
+    action: "carrier.response",
+    entityType: "Application",
+    entityId: applicationId,
+    metadata: {
+      ...rest,
+      reference: rest.reference ?? null,
+      message: rest.message?.slice(0, MAX_AUDITED_MESSAGE) ?? null,
+      transport: meta?.transport ?? null,
+      httpStatus: meta?.httpStatus ?? null,
+      httpAttempts: meta?.attempts ?? null,
+      durationMs: meta?.durationMs ?? null,
+    },
+    req,
+  });
+}
+
 // Sends an application to its carrier and records the outcome. Used both for
 // the applicant's first submission and an agent's resubmission.
 export async function sendToCarrier(app: SubmittableApplication, opts: SendOptions): Promise<void> {
@@ -34,10 +78,11 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
   if (claimed.count === 0) throw new HttpError(409, "This application is already being submitted");
 
   const attempt = app.submissionAttempts + 1;
+  const carrierCode = app.plan.carrier.code;
   let result: CarrierSubmissionResult;
   try {
     result = await carrierSubmission.submit({
-      carrierCode: app.plan.carrier.code,
+      carrierCode,
       planId: app.planId,
       applicationId: app.id,
       attempt,
@@ -52,11 +97,21 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
       documentTypes: app.documents.map((d) => d.type),
     });
   } catch (err) {
-    console.error("Carrier submission failed", err);
+    const known = err instanceof CarrierSubmissionError ? err : null;
+    console.error(`Carrier submission failed for ${app.id}:`, err instanceof Error ? err.message : err);
     // Workflow status is left as-is (DRAFT or REJECTED) so it stays retryable.
     await prisma.application.update({
       where: { id: app.id },
       data: { submissionStatus: "FAILED", carrierMessage: "The carrier could not be reached. Please try again." },
+    });
+    await recordCarrierResponse(app.id, opts.actorUserId, opts.req, {
+      operation: "submit",
+      carrierCode,
+      outcome: "ERROR",
+      attempt,
+      message: known?.message ?? "Unexpected error",
+      retryable: known?.retryable ?? true,
+      meta: known?.meta,
     });
     await recordAuditEvent({
       actorUserId: opts.actorUserId,
@@ -68,6 +123,16 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
     });
     throw new HttpError(502, "The carrier could not be reached. Please try again.");
   }
+
+  await recordCarrierResponse(app.id, opts.actorUserId, opts.req, {
+    operation: "submit",
+    carrierCode,
+    outcome: result.outcome,
+    attempt,
+    reference: result.reference,
+    message: result.message,
+    meta: result.meta,
+  });
 
   const accepted = result.outcome === "ACCEPTED";
   const applicationUpdate = prisma.application.update({
@@ -86,7 +151,7 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
   if (accepted && app.agentId) {
     const rate = await prisma.commissionRate.findUnique({ where: { carrierId: app.plan.carrierId } });
     const rateBps = rate?.rateBps ?? 0;
-    if (!rate) console.warn(`No commission rate for carrier ${app.plan.carrier.code}; booking at 0`);
+    if (!rate) console.warn(`No commission rate for carrier ${carrierCode}; booking at 0`);
     await prisma.$transaction([
       applicationUpdate,
       prisma.commission.create({
@@ -104,13 +169,14 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
     await applicationUpdate;
   }
 
-  if (!accepted) {
-    await notifications.send({
-      to: app.user.email,
-      subject: "Update on your insurance application",
-      body: `${app.plan.carrier.name} needs more information about your application. Sign in to see the details.`,
-    });
-  }
+  const who = { firstName: app.firstName, applicationId: app.id };
+  const template =
+    opts.auditAction === "application.resubmit"
+      ? emailTemplates.resubmissionOutcome({ ...who, accepted, confirmationNumber: result.reference })
+      : accepted
+        ? emailTemplates.enrollmentConfirmation({ ...who, confirmationNumber: result.reference! })
+        : emailTemplates.carrierNeedsInfo(who);
+  await email.send({ to: app.user.email, ...template });
 
   await recordAuditEvent({
     actorUserId: opts.actorUserId,

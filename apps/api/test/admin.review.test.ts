@@ -13,10 +13,15 @@ const storage = vi.hoisted(() => ({ put: vi.fn(), get: vi.fn(), delete: vi.fn() 
 vi.mock("../src/integrations/documentStorage", () => ({ documentStorage: storage }));
 
 const carrier = vi.hoisted(() => ({ submit: vi.fn(), notifyDecision: vi.fn() }));
-vi.mock("../src/integrations/carrierSubmission", () => ({ carrierSubmission: carrier }));
+// Keep the real error classes (the code under test uses instanceof); swap
+// only the adapter instance.
+vi.mock("../src/integrations/carrierSubmission", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/integrations/carrierSubmission")>()),
+  carrierSubmission: carrier,
+}));
 
 const mailer = vi.hoisted(() => ({ send: vi.fn() }));
-vi.mock("../src/integrations/notifications", () => ({ notifications: mailer }));
+vi.mock("../src/integrations/email", () => ({ email: mailer }));
 
 import { createApp } from "../src/app";
 import { signAccessToken } from "../src/lib/jwt";

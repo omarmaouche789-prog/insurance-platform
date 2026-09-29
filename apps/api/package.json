@@ -9,15 +9,18 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "lint": "eslint src",
     "test": "vitest run",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev",
-    "prisma:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts"
+    "prisma:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1142.0",
     "@insurance/shared": "*",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",

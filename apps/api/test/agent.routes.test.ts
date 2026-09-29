@@ -13,10 +13,15 @@ const storage = vi.hoisted(() => ({ put: vi.fn(), get: vi.fn(), delete: vi.fn() 
 vi.mock("../src/integrations/documentStorage", () => ({ documentStorage: storage }));
 
 const carrier = vi.hoisted(() => ({ submit: vi.fn() }));
-vi.mock("../src/integrations/carrierSubmission", () => ({ carrierSubmission: carrier }));
+// Keep the real error classes (the code under test uses instanceof); swap
+// only the adapter instance.
+vi.mock("../src/integrations/carrierSubmission", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/integrations/carrierSubmission")>()),
+  carrierSubmission: carrier,
+}));
 
 const mailer = vi.hoisted(() => ({ send: vi.fn() }));
-vi.mock("../src/integrations/notifications", () => ({ notifications: mailer }));
+vi.mock("../src/integrations/email", () => ({ email: mailer }));
 
 import { createApp } from "../src/app";
 import { signAccessToken } from "../src/lib/jwt";
@@ -122,8 +127,8 @@ describe("POST /api/agent/applications/:id/request-documents", () => {
     });
     const email = mailer.send.mock.calls[0][0];
     expect(email.to).toBe("user@example.com");
-    expect(email.body).toMatch(/Proof of income/);
-    expect(email.body).not.toMatch(/W-2/);
+    expect(email.text).toMatch(/Proof of income/);
+    expect(JSON.stringify(email)).not.toMatch(/W-2/);
   });
 
   it("400s without a document type or message", async () => {

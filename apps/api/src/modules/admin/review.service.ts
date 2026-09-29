@@ -13,7 +13,10 @@ import { recordAuditEvent } from "../../lib/audit";
 import { HttpError } from "../../middleware/errorHandler";
 import { carrierSubmission } from "../../integrations/carrierSubmission";
 import { documentStorage } from "../../integrations/documentStorage";
-import { notifications } from "../../integrations/notifications";
+import { email } from "../../integrations/email";
+import { emailTemplates } from "../../integrations/emailTemplates";
+import { CarrierSubmissionError } from "../../integrations/carrierSubmission";
+import { recordCarrierResponse } from "../applications/carrierSubmit";
 import { FULL_INCLUDE, type FullApplication } from "../applications/applications.service";
 import { isAwaitingReview } from "../applications/applications.validation";
 import { toAgentApplicationDTO } from "../agent/agent.service";
@@ -150,25 +153,35 @@ export async function approveApplication(
 
   const commissionsEarned = await recordDecision(id, adminId, "APPROVED", notes || null);
 
-  // Side effects run after commit. A failed carrier notice doesn't undo the
-  // approval; it's logged for follow-up (an outbox/retry lands with the real
-  // carrier integrations in Phase 6).
+  // Side effects run after commit. The carrier adapter already retries
+  // transient failures; if the notice still fails the approval stands and the
+  // failure is in the audit trail (carrier.response ERROR) for follow-up.
   let carrierNotified = true;
+  const carrierCode = app.plan.carrier.code;
   try {
-    await carrierSubmission.notifyDecision({
-      carrierCode: app.plan.carrier.code,
+    const meta = await carrierSubmission.notifyDecision({
+      carrierCode,
       carrierReference: app.carrierReference,
       applicationId: id,
       decision: "APPROVED",
     });
+    await recordCarrierResponse(id, adminId, req, { operation: "decision", carrierCode, outcome: "NOTIFIED", meta });
   } catch (err) {
     carrierNotified = false;
-    console.error("Carrier approval notice failed", err);
+    console.error(`Carrier approval notice failed for ${id}:`, err instanceof Error ? err.message : err);
+    const known = err instanceof CarrierSubmissionError ? err : null;
+    await recordCarrierResponse(id, adminId, req, {
+      operation: "decision",
+      carrierCode,
+      outcome: "ERROR",
+      message: known?.message ?? "Unexpected error",
+      retryable: known?.retryable ?? true,
+      meta: known?.meta,
+    });
   }
-  await notifications.send({
+  await email.send({
     to: app.user.email,
-    subject: "Your insurance application was approved",
-    body: `Your application for ${app.plan.name} has been approved. Sign in to see the details.`,
+    ...emailTemplates.approval({ firstName: app.firstName, applicationId: id, confirmationNumber: app.carrierReference }),
   });
 
   await recordAuditEvent({
@@ -195,17 +208,16 @@ export async function rejectApplication(
 
   // The reason stays in the portal; emails only say there's an update.
   if (app.agent) {
-    await notifications.send({
+    await email.send({
       to: app.agent.email,
-      subject: "An application assigned to you was rejected",
-      body: `The application for ${app.firstName} ${app.lastName} was rejected in review. Sign in to the agent portal for the reason.`,
+      ...emailTemplates.rejectionToAgent({
+        agentFirstName: app.agent.firstName,
+        applicantName: `${app.firstName} ${app.lastName}`,
+        applicationId: id,
+      }),
     });
   }
-  await notifications.send({
-    to: app.user.email,
-    subject: "Update on your insurance application",
-    body: `Your application for ${app.plan.name} was not approved. Sign in to see the reason and next steps.`,
-  });
+  await email.send({ to: app.user.email, ...emailTemplates.rejectionToApplicant({ firstName: app.firstName, applicationId: id }) });
 
   await recordAuditEvent({
     actorUserId: adminId,

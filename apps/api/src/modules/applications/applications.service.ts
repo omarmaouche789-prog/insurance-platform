@@ -242,7 +242,7 @@ export async function uploadDocument(
   if (!mimeType) throw new HttpError(400, "File must be a PDF, JPEG, or PNG");
 
   const storageKey = `applications/${id}/${crypto.randomUUID()}.${extensionForMime(mimeType)}`;
-  await documentStorage.put(storageKey, file.buffer);
+  await documentStorage.put(storageKey, file.buffer, mimeType);
 
   const previous = app.documents.find((d) => d.type === type);
   const fileName = file.originalname.slice(0, 255);

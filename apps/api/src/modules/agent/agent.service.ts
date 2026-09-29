@@ -14,7 +14,8 @@ import { prisma } from "../../lib/prisma";
 import { recordAuditEvent } from "../../lib/audit";
 import { HttpError } from "../../middleware/errorHandler";
 import { documentStorage } from "../../integrations/documentStorage";
-import { notifications } from "../../integrations/notifications";
+import { email } from "../../integrations/email";
+import { emailTemplates } from "../../integrations/emailTemplates";
 import { FULL_INCLUDE, toApplicationDTO, type FullApplication } from "../applications/applications.service";
 import { sendToCarrier } from "../applications/carrierSubmit";
 import { resubmitBlocker } from "../applications/applications.validation";
@@ -133,10 +134,13 @@ export async function requestDocuments(
     data: { applicationId: id, agentId, message: input.message, requestedTypes: input.requestedTypes },
   });
   // The message itself stays in the portal; email only says there's something to see.
-  await notifications.send({
+  await email.send({
     to: app.user.email,
-    subject: "Your agent needs documents for your application",
-    body: `Your agent has requested: ${input.requestedTypes.map((t) => DOCUMENT_TYPE_LABELS[t]).join(", ")}. Sign in to your account to upload them.`,
+    ...emailTemplates.documentRequest({
+      firstName: app.firstName,
+      applicationId: id,
+      documentLabels: input.requestedTypes.map((t) => DOCUMENT_TYPE_LABELS[t]),
+    }),
   });
   await recordAuditEvent({
     actorUserId: agentId,

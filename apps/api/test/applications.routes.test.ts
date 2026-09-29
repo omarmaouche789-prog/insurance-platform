@@ -2,7 +2,7 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DOCS, installTransaction, makeApplication, makeDbMock, makeDocumentRequest, PLAN } from "./fixtures";
 
-// HTTP-level tests with Prisma, storage, notifications and the carrier mocked
+// HTTP-level tests with Prisma, storage, email and the carrier mocked
 // out, so they exercise auth, ownership, validation, and the submit state
 // machine without a database.
 const db = vi.hoisted(() => ({ current: null as unknown as ReturnType<typeof makeDbMock> }));
@@ -16,10 +16,15 @@ const storage = vi.hoisted(() => ({ put: vi.fn(), get: vi.fn(), delete: vi.fn() 
 vi.mock("../src/integrations/documentStorage", () => ({ documentStorage: storage }));
 
 const carrier = vi.hoisted(() => ({ submit: vi.fn() }));
-vi.mock("../src/integrations/carrierSubmission", () => ({ carrierSubmission: carrier }));
+// Keep the real error classes (the code under test uses instanceof); swap
+// only the adapter instance.
+vi.mock("../src/integrations/carrierSubmission", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/integrations/carrierSubmission")>()),
+  carrierSubmission: carrier,
+}));
 
 const mailer = vi.hoisted(() => ({ send: vi.fn() }));
-vi.mock("../src/integrations/notifications", () => ({ notifications: mailer }));
+vi.mock("../src/integrations/email", () => ({ email: mailer }));
 
 import { createApp } from "../src/app";
 import { signAccessToken } from "../src/lib/jwt";
@@ -232,6 +237,51 @@ describe("POST /api/applications/:id/submit", () => {
       data: expect.objectContaining({ agentId: "agent-1", premiumCents: 46800, rateBps: 500, amountCents: 28080 }),
     });
     expect(prisma.$transaction).toHaveBeenCalledOnce();
+  });
+
+  it("emails an enrollment confirmation and audits the carrier response", async () => {
+    prisma.application.findFirst.mockResolvedValue(makeApplication());
+    carrier.submit.mockResolvedValue({
+      outcome: "ACCEPTED",
+      reference: "BLUEPEAK-ABCD1234",
+      message: "ok",
+      meta: { transport: "http", httpStatus: 200, attempts: 2, durationMs: 1234 },
+    });
+
+    await request(app).post("/api/applications/app-1/submit").set(auth());
+
+    expect(mailer.send).toHaveBeenCalledOnce();
+    const sent = mailer.send.mock.calls[0][0];
+    expect(sent).toMatchObject({ to: "user@example.com", subject: "We received your insurance application" });
+    expect(sent.text).toContain("BLUEPEAK-ABCD1234");
+    expect(JSON.stringify(sent)).not.toMatch(/Silver Select|ASTHMA|6789/);
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "carrier.response",
+        entityId: "app-1",
+        metadata: expect.objectContaining({ outcome: "ACCEPTED", httpStatus: 200, httpAttempts: 2, transport: "http" }),
+      }),
+    });
+  });
+
+  it("audits a carrier failure with its retryability", async () => {
+    const { CarrierUnavailableError } = await import("../src/integrations/carrierSubmission");
+    prisma.application.findFirst.mockResolvedValue(makeApplication());
+    carrier.submit.mockRejectedValue(
+      new CarrierUnavailableError("Carrier API unavailable: HTTP 503 after 3 attempts", { transport: "http", httpStatus: 503, attempts: 3, durationMs: 9000 }, true),
+    );
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    const res = await request(app).post("/api/applications/app-1/submit").set(auth());
+
+    expect(res.status).toBe(502);
+    expect(prisma.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "carrier.response",
+        metadata: expect.objectContaining({ outcome: "ERROR", retryable: true, httpStatus: 503, httpAttempts: 3 }),
+      }),
+    });
+    expect(mailer.send).not.toHaveBeenCalled();
   });
 
   it("books no commission when no agent is assigned", async () => {

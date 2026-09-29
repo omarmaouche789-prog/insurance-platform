@@ -1,0 +1,63 @@
+# Render Blueprint for the API (apps/api). The web app deploys to Vercel;
+# Postgres stays on Railway. See DEPLOYMENT.md for the full env var list.
+services:
+  - type: web
+    name: insurance-marketplace-api
+    runtime: node
+    plan: starter
+    region: oregon
+    # Monorepo root, so npm workspaces resolve @insurance/shared.
+    rootDir: .
+    # --include=dev: NODE_ENV=production would otherwise skip tsc/prisma.
+    buildCommand: >-
+      npm ci --include=dev &&
+      npm run build -w packages/shared &&
+      npm run -w apps/api prisma:generate &&
+      npm run build -w apps/api
+    # Migrations run on each deploy, before the new version starts serving.
+    preDeployCommand: npm run -w apps/api migrate:deploy
+    startCommand: npm run -w apps/api start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      # One hop: Render's load balancer. Keeps audit-log IPs honest.
+      - key: TRUST_PROXY
+        value: "1"
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      # Must match across deploys, or existing SSNs/health info become
+      # unreadable: set it yourself, don't let Render generate it.
+      - key: FIELD_ENCRYPTION_KEY
+        sync: false
+      - key: WEB_ORIGIN
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: AWS_S3_BUCKET
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SMARTY_AUTH_ID
+        sync: false
+      - key: SMARTY_AUTH_TOKEN
+        sync: false
+      # Add CARRIER_<CODE>_API_URL / CARRIER_<CODE>_API_KEY per carrier in the
+      # dashboard, or ALLOW_MOCK_INTEGRATIONS=true for a staging environment.
