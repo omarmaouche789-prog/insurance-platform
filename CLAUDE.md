@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Phase 1 (Foundations — auth, RBAC skeleton, schema v1) is implemented. npm workspaces monorepo:
+Phases 1 (Foundations — auth, RBAC skeleton, schema v1), 2 (Guest discovery — ZIP plan search, filters, comparison), 3 (Enrollment — 5-step wizard, document upload, mocked carrier submission) 4 (Agent portal — assigned-application queue, document requests, resubmission, commission tracking, PDF export) and 5 (Admin application approval — review queue, approve/reject with notes, bulk decisions, approval metrics) are implemented. npm workspaces monorepo:
 
 - `apps/web` — Next.js (App Router) frontend: guest routes (`/`, `/login`, `/register`) plus role-gated portals at `/account`, `/agent`, `/admin`.
 - `apps/api` — Express + TypeScript backend: register/login/refresh/logout, TOTP 2FA for agent/admin, `requireAuth`/`requireRole`/`requireAdminRole` RBAC middleware, audit logging. Prisma against Postgres.
@@ -18,16 +18,16 @@ cp .env.example .env && cp .env.example apps/api/.env   # Prisma CLI only reads 
 npm install
 npm run -w apps/api prisma:generate
 npm run -w apps/api prisma:migrate   # creates schema in Postgres
-npm run -w apps/api prisma:seed      # seeds admin@example.com / agent@example.com / user@example.com, password Password123!
+npm run -w apps/api prisma:seed      # seeds admin@ / agent@ (CA,NY) / agent2@ (TX,FL) / user@example.com, password Password123!, plus a mock plan catalog (4 fictional carriers, 16 plans, 6 ZIPs) and placeholder commission rates
 npm run dev                          # runs api (:4000) and web (:3000) together
-npm run -w apps/api test             # vitest: RBAC middleware + token unit tests
+npm run -w apps/api test             # vitest: unit tests + supertest route tests (Prisma and adapters mocked; no DB needed)
 npm run lint
 npm run build
 ```
 
 Copy `.env.example` to `.env` at the repo root before running anything (both apps read it).
 
-Not yet built: plans, applications, commissions, CMS, and everything else in phases 2-9 below — don't assume those tables/endpoints/pages exist.
+Not yet built: the recommendation engine, admin user/agent/plan CRUD (the users page is read-only), commission payout (`PAID`), CMS, and everything else in phases 6-9 below — don't assume those tables/endpoints/pages exist. Plan search is public (`GET /api/plans?zip=`, `/api/plans/compare?ids=`, `/api/plans/:id`). Applicant endpoints are `/api/applications` (USER role only; ownership enforced by scoping every lookup to `userId`, returning 404 for other users' rows). Agent endpoints are `/api/agent/*` (AGENT role only; same pattern scoped to `agentId`; every view/download of an application is audit-logged). Admin review endpoints are `/api/admin/applications/*` (any ADMIN reads; only SUPER/OPERATIONS sub-roles approve/reject — `APPROVER_ADMIN_ROLES` in shared). "Pending review" means `status SUBMITTED` + `submissionStatus ACCEPTED`; decisions claim that state atomically and settle the commission (`EARNED` on approve, `VOID` on reject) in the same transaction (`modules/admin/review.service.ts`). An admin rejection keeps `submissionStatus ACCEPTED`, which is how it's told apart from a carrier rejection: carrier rejections are resubmittable, admin rejections are final. `reviewNotes` is the rejection reason (shown to applicant/agent) or internal approval notes (admins only). Applications are auto-assigned at creation to the least-loaded active agent whose `regions` include the applicant ZIP's state (`modules/agent/assignment.ts`), else left unassigned. Carrier submission (applicant submit and agent resubmit) goes through one function, `modules/applications/carrierSubmit.ts`, which also books the agent's commission (`PENDING`) on acceptance. The mock carrier rejects SSNs ending `0001` and times out on `0002`, first attempt only. External services sit behind adapters in `apps/api/src/integrations/` (ZIP lookup, document storage, carrier submission, notifications — all mocked/local; notification bodies must never contain PHI). Money columns are integer cents. SSN and health info are AES-256-GCM encrypted at rest via `lib/fieldCrypto.ts` (needs `FIELD_ENCRYPTION_KEY`); never return or log the full SSN, and never persist it client-side.
 
 ## What's being built
 

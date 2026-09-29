@@ -35,10 +35,16 @@ model User {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
 
-  agentProfile    AgentProfile?
-  twoFactorSecret TwoFactorSecret?
-  refreshTokens   RefreshToken[]
-  auditLogs       AuditLog[]
+  agentProfile         AgentProfile?
+  twoFactorSecret      TwoFactorSecret?
+  refreshTokens        RefreshToken[]
+  auditLogs            AuditLog[]
+  applications         Application[]     @relation("Applicant")
+  // Agent side of the relations; empty for non-agents.
+  assignedApplications Application[]     @relation("AssignedAgent")
+  documentRequests     DocumentRequest[]
+  commissions          Commission[]
+  reviewedApplications Application[]     @relation("Reviewer")
 
   @@map("users")
 }
@@ -98,4 +104,233 @@ model AuditLog {
   @@index([actorUserId])
   @@index([action])
   @@map("audit_logs")
+}
+
+// ─── Phase 2: plan catalog ───────────────────────────────────────────────────
+// All money columns are integer cents to avoid Decimal serialization and
+// float rounding; format for display at the edge.
+
+enum MetalTier {
+  CATASTROPHIC
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum PlanType {
+  HMO
+  PPO
+  EPO
+  POS
+}
+
+model Carrier {
+  id       String  @id @default(uuid())
+  code     String  @unique
+  name     String
+  isActive Boolean @default(true)
+
+  plans          Plan[]
+  commissionRate CommissionRate?
+  commissions    Commission[]
+
+  @@map("carriers")
+}
+
+model Plan {
+  id                    String    @id @default(uuid())
+  carrierId             String
+  carrier               Carrier   @relation(fields: [carrierId], references: [id])
+  name                  String
+  planYear              Int
+  metalTier             MetalTier
+  planType              PlanType
+  monthlyPremiumCents   Int
+  deductibleCents       Int
+  outOfPocketMaxCents   Int
+  primaryCareCopayCents Int
+  specialistCopayCents  Int
+  genericDrugCopayCents Int
+  hsaEligible           Boolean   @default(false)
+  isActive              Boolean   @default(true)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  serviceAreas PlanServiceArea[]
+  applications Application[]
+
+  @@unique([carrierId, name, planYear])
+  @@index([metalTier])
+  @@map("plans")
+}
+
+// A plan is sold in a set of ZIP codes. Kept as a join table (rather than a
+// String[] on Plan) so "plans in ZIP X" is an indexed lookup.
+model PlanServiceArea {
+  planId  String
+  plan    Plan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  zipCode String @db.Char(5)
+
+  @@id([planId, zipCode])
+  @@index([zipCode])
+  @@map("plan_service_areas")
+}
+
+// ─── Phase 3: enrollment applications ────────────────────────────────────────
+
+// SUBMITTED = carrier accepted receipt, awaiting admin review.
+// REJECTED  = declined by the carrier (submissionStatus REJECTED/FAILED; an
+//             agent can resubmit) or by an admin (submissionStatus ACCEPTED;
+//             final).
+// APPROVED  = approved by an admin.
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+// Carrier-side outcome, tracked separately from our own workflow status.
+// PENDING doubles as a submit lock so a double-click can't submit twice.
+enum CarrierSubmissionStatus {
+  NOT_SUBMITTED
+  PENDING
+  ACCEPTED
+  REJECTED
+  FAILED
+}
+
+// PHOTO_ID and PROOF_OF_ADDRESS are required to submit; the rest are only
+// collected when an agent requests them.
+enum DocumentType {
+  PHOTO_ID
+  PROOF_OF_ADDRESS
+  PROOF_OF_INCOME
+  OTHER
+}
+
+model Application {
+  id      String            @id @default(uuid())
+  userId  String
+  user    User              @relation("Applicant", fields: [userId], references: [id], onDelete: Cascade)
+  // Assigned at creation to an agent licensed in the applicant's state; null
+  // when none is available (admins assign manually in Phase 5).
+  agentId String?
+  agent   User?             @relation("AssignedAgent", fields: [agentId], references: [id], onDelete: SetNull)
+  planId  String
+  plan    Plan              @relation(fields: [planId], references: [id])
+  status  ApplicationStatus @default(DRAFT)
+
+  firstName           String
+  lastName            String
+  dateOfBirth         DateTime @db.Date
+  // Nullable only for rows created before Phase 4; the API requires it.
+  zipCode             String?  @db.Char(5)
+  // SSN and health info are AES-256-GCM encrypted (lib/fieldCrypto.ts);
+  // only the SSN's last 4 digits are stored in the clear, for display.
+  ssnEncrypted        String
+  ssnLast4            String   @db.Char(4)
+  healthInfoEncrypted String?
+
+  submissionStatus   CarrierSubmissionStatus @default(NOT_SUBMITTED)
+  carrierReference   String?
+  carrierMessage     String?
+  submittedAt        DateTime?
+  submissionAttempts Int                     @default(0)
+
+  // Admin decision (Phase 5). reviewNotes is the rejection reason (shown to
+  // the applicant and agent) or internal approval notes (admins only).
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?     @relation("Reviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNotes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents        ApplicationDocument[]
+  documentRequests DocumentRequest[]
+  commission       Commission?
+
+  @@index([userId])
+  @@index([agentId, status])
+  @@index([status, submittedAt])
+  @@map("applications")
+}
+
+// One file per document type per application; re-uploading replaces it.
+model ApplicationDocument {
+  id            String       @id @default(uuid())
+  applicationId String
+  application   Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  type          DocumentType
+  fileName      String
+  mimeType      String
+  sizeBytes     Int
+  storageKey    String       @unique
+  uploadedAt    DateTime     @default(now())
+
+  @@unique([applicationId, type])
+  @@map("application_documents")
+}
+
+// ─── Phase 4: agent tooling & commissions ────────────────────────────────────
+
+// An agent asking the applicant for more documents. Resolved automatically
+// once every requested type has been uploaded after the request was made.
+model DocumentRequest {
+  id             String         @id @default(uuid())
+  applicationId  String
+  application    Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  agentId        String
+  agent          User           @relation(fields: [agentId], references: [id])
+  message        String
+  requestedTypes DocumentType[]
+  createdAt      DateTime       @default(now())
+  resolvedAt     DateTime?
+
+  @@index([applicationId])
+  @@map("document_requests")
+}
+
+// Placeholder per-carrier rates until real rate tables exist (CLAUDE.md lists
+// them as unresolved). Basis points of annualized premium: 500 = 5.00%.
+model CommissionRate {
+  carrierId String   @id
+  carrier   Carrier  @relation(fields: [carrierId], references: [id])
+  rateBps   Int
+  updatedAt DateTime @updatedAt
+
+  @@map("commission_rates")
+}
+
+// PENDING when the carrier accepts, EARNED at admin approval, VOID at admin
+// rejection, PAID by finance (Phase 7).
+enum CommissionStatus {
+  PENDING
+  EARNED
+  PAID
+  VOID
+}
+
+// One commission per application, snapshotting the premium and rate at the
+// time it was created so later rate changes don't rewrite history.
+model Commission {
+  id            String           @id @default(uuid())
+  applicationId String           @unique
+  application   Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  agentId       String
+  agent         User             @relation(fields: [agentId], references: [id])
+  carrierId     String
+  carrier       Carrier          @relation(fields: [carrierId], references: [id])
+  premiumCents  Int
+  rateBps       Int
+  amountCents   Int
+  status        CommissionStatus @default(PENDING)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([agentId, status])
+  @@map("commissions")
 }

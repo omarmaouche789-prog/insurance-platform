@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { portalPathForRole } from "@insurance/shared";
 import { useAuth } from "../../../lib/auth-context";
 import { ApiError } from "../../../lib/api";
+import { useNextPath } from "../../../lib/next-path";
 
 export default function LoginPage() {
   const { login, completeTwoFactor } = useAuth();
+  const next = useNextPath();
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -26,7 +29,7 @@ export default function LoginPage() {
       if (res.status === "2fa_required") {
         setChallengeToken(res.challengeToken);
       } else {
-        router.push(portalPathForRole(res.user.role));
+        router.push(next ?? portalPathForRole(res.user.role));
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
@@ -42,7 +45,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const res = await completeTwoFactor(challengeToken, code);
-      router.push(portalPathForRole(res.user.role));
+      router.push(next ?? portalPathForRole(res.user.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
@@ -105,6 +108,12 @@ export default function LoginPage() {
           Log in
         </button>
       </form>
+      <p className="mt-4 text-sm text-gray-600">
+        No account yet?{" "}
+        <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="underline">
+          Register
+        </Link>
+      </p>
     </div>
   );
 }

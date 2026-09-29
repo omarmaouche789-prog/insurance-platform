@@ -16,7 +16,7 @@ export function RoleGuard({ role, children }: { role: Role; children: React.Reac
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      router.replace("/login");
+      router.replace(`/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       return;
     }
     if (user.role !== role) {

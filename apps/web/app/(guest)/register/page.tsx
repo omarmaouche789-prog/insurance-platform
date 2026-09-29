@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { portalPathForRole } from "@insurance/shared";
 import { useAuth } from "../../../lib/auth-context";
 import { ApiError } from "../../../lib/api";
+import { useNextPath } from "../../../lib/next-path";
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const next = useNextPath();
   const router = useRouter();
 
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "" });
@@ -24,7 +27,7 @@ export default function RegisterPage() {
     setSubmitting(true);
     try {
       const res = await register(form);
-      router.push(portalPathForRole(res.user.role));
+      router.push(next ?? portalPathForRole(res.user.role));
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
@@ -76,6 +79,12 @@ export default function RegisterPage() {
           Register
         </button>
       </form>
+      <p className="mt-4 text-sm text-gray-600">
+        Already have an account?{" "}
+        <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="underline">
+          Log in
+        </Link>
+      </p>
     </div>
   );
 }

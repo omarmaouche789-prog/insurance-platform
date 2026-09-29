@@ -15,7 +15,8 @@ export function middleware(request: NextRequest) {
 
   if (!request.cookies.has("refresh_token")) {
     const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", request.nextUrl.pathname);
+    // Keep the query string too, e.g. /account/enroll?planId=… for a guest who clicked "Enroll".
+    loginUrl.searchParams.set("next", request.nextUrl.pathname + request.nextUrl.search);
     return NextResponse.redirect(loginUrl);
   }
 

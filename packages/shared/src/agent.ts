@@ -1,0 +1,60 @@
+import type { ApplicationDTO, ApplicationStatus, DocumentType, SubmissionStatus } from "./applications";
+
+export interface AgentApplicationSummaryDTO {
+  id: string;
+  applicantName: string;
+  planName: string;
+  carrierName: string;
+  monthlyPremiumCents: number;
+  status: ApplicationStatus;
+  submissionStatus: SubmissionStatus;
+  submissionAttempts: number;
+  openDocumentRequests: number;
+  submittedAt: string | null;
+  updatedAt: string;
+}
+
+export interface AgentApplicationListResponseDTO {
+  total: number;
+  page: number;
+  pageSize: number;
+  applications: AgentApplicationSummaryDTO[];
+  // Per-status counts across all of the agent's applications, for filter tabs.
+  statusCounts: Record<ApplicationStatus, number>;
+}
+
+// What an agent sees: the applicant view plus contact details. Still only the
+// SSN's last 4 digits.
+export interface AgentApplicationDTO extends ApplicationDTO {
+  applicant: { email: string; phone: string | null };
+  canResubmit: boolean;
+}
+
+export interface RequestDocumentsRequestDTO {
+  requestedTypes: DocumentType[];
+  message: string;
+}
+
+export const COMMISSION_STATUSES = ["PENDING", "EARNED", "PAID", "VOID"] as const;
+export type CommissionStatus = (typeof COMMISSION_STATUSES)[number];
+
+export interface CommissionDTO {
+  id: string;
+  applicationId: string;
+  applicantName: string;
+  planName: string;
+  carrierName: string;
+  premiumCents: number; // monthly premium at the time of sale
+  rateBps: number;
+  amountCents: number;
+  status: CommissionStatus;
+  createdAt: string;
+}
+
+export interface CommissionSummaryResponseDTO {
+  totals: Record<CommissionStatus, number>; // cents
+  total: number;
+  page: number;
+  pageSize: number;
+  commissions: CommissionDTO[];
+}

@@ -9,6 +9,7 @@ export default function GuestLayout({ children }: { children: ReactNode }) {
           Insurance Marketplace
         </Link>
         <nav className="flex gap-4 text-sm">
+          <Link href="/plans">Find plans</Link>
           <Link href="/login">Log in</Link>
           <Link href="/register">Register</Link>
         </nav>

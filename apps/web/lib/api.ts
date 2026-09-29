@@ -1,5 +1,10 @@
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+    // Zod's flatten() output from the API's 400 responses, when present.
+    public fieldErrors: Record<string, string[] | undefined> = {},
+  ) {
     super(message);
   }
 }
@@ -10,7 +15,10 @@ export class ApiError extends Error {
 export async function apiFetch<T>(path: string, options: RequestInit & { accessToken?: string } = {}): Promise<T> {
   const { accessToken, headers, ...rest } = options;
   const finalHeaders = new Headers(headers);
-  finalHeaders.set("Content-Type", "application/json");
+  // FormData bodies need the browser to set a multipart boundary itself.
+  if (!(rest.body instanceof FormData)) {
+    finalHeaders.set("Content-Type", "application/json");
+  }
   if (accessToken) {
     finalHeaders.set("Authorization", `Bearer ${accessToken}`);
   }
@@ -19,8 +27,20 @@ export async function apiFetch<T>(path: string, options: RequestInit & { accessT
   const body = await res.json().catch(() => null);
 
   if (!res.ok) {
-    throw new ApiError(res.status, body?.error ?? `Request to ${path} failed with ${res.status}`);
+    throw new ApiError(
+      res.status,
+      body?.error ?? `Request to ${path} failed with ${res.status}`,
+      body?.details?.fieldErrors ?? {},
+    );
   }
 
   return body as T;
+}
+
+// Human-readable message for an error, including nested field errors like
+// "personal.ssn" that Zod reports under the top-level key.
+export function describeApiError(err: unknown, fallback = "Something went wrong"): string {
+  if (!(err instanceof ApiError)) return fallback;
+  const details = Object.values(err.fieldErrors).flat().filter(Boolean);
+  return details.length ? `${err.message}: ${details.join("; ")}` : err.message;
 }

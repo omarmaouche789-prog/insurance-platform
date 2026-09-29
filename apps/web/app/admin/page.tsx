@@ -39,8 +39,7 @@ export default function AdminUsersPage() {
     <div className="px-6 py-8">
       <h1 className="text-xl font-semibold">User management</h1>
       <p className="mt-2 text-sm text-gray-600">
-        Full user/agent/plan/application management arrives in Phase 5. This table calls the
-        <code> ADMIN</code>-only <code>GET /api/admin/users</code> endpoint to prove RBAC end to end.
+        Read-only for now: creating, editing, and deactivating users and agents isn&apos;t built yet.
       </p>
 
       {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
