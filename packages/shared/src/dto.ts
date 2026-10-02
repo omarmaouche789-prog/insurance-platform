@@ -35,6 +35,7 @@ export interface LoginChallengeResponseDTO {
 
 export interface TwoFactorVerifyRequestDTO {
   challengeToken: string;
+  // A 6-digit authenticator code, or a backup code (XXXXX-XXXXX).
   code: string;
 }
 

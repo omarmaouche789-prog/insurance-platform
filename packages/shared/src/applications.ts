@@ -77,13 +77,25 @@ export interface UpdateApplicationRequestDTO {
   healthInfo: HealthInfoDTO;
 }
 
+export const DOCUMENT_REQUEST_STATUSES = ["OPEN", "FULFILLED", "COMPLETED", "CANCELLED"] as const;
+export type DocumentRequestStatus = (typeof DOCUMENT_REQUEST_STATUSES)[number];
+
+export const DOCUMENT_REQUEST_STATUS_LABELS: Record<DocumentRequestStatus, string> = {
+  OPEN: "Waiting on applicant",
+  FULFILLED: "Uploaded — needs review",
+  COMPLETED: "Complete",
+  CANCELLED: "Cancelled",
+};
+
 export interface DocumentRequestDTO {
   id: string;
   message: string;
   requestedTypes: DocumentType[];
   agentName: string;
+  status: DocumentRequestStatus;
   createdAt: string;
   resolvedAt: string | null;
+  completedAt: string | null;
 }
 
 export interface ApplicationDocumentDTO {

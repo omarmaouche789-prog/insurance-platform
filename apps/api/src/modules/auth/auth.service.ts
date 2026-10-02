@@ -1,15 +1,16 @@
-import bcrypt from "bcryptjs";
 import type { Request } from "express";
-import type { User } from "@prisma/client";
+import type { LoginMethod, User } from "@prisma/client";
 import type { AuthUserDTO, LoginRequestDTO, RegisterRequestDTO } from "@insurance/shared";
+import { isTotpCode } from "@insurance/shared";
 import { prisma } from "../../lib/prisma";
 import { signAccessToken, signChallengeToken, verifyChallengeToken } from "../../lib/jwt";
 import { generateRefreshToken, hashRefreshToken, refreshTokenExpiryDate } from "../../lib/refreshToken";
-import { generateTotpSecret, totpKeyUri, verifyTotpCode } from "../../lib/totp";
+import { hashPassword, verifyPassword } from "../../lib/password";
 import { recordAuditEvent } from "../../lib/audit";
 import { HttpError } from "../../middleware/errorHandler";
-
-const PASSWORD_HASH_ROUNDS = 12;
+import { assertNotLockedOut, recordLogin } from "../security/loginHistory";
+import { consumeSecondFactor } from "../security/twoFactor.service";
+import { notify } from "../notifications/notifications.service";
 
 export function toAuthUserDTO(user: User & { twoFactorSecret?: { enabledAt: Date | null } | null }): AuthUserDTO {
   return {
@@ -19,11 +20,11 @@ export function toAuthUserDTO(user: User & { twoFactorSecret?: { enabledAt: Date
     lastName: user.lastName,
     role: user.role,
     adminRole: user.adminRole,
-    twoFactorEnabled: Boolean(user.twoFactorSecret?.enabledAt),
+    twoFactorEnabled: user.twoFactorEnabled || Boolean(user.twoFactorSecret?.enabledAt),
   };
 }
 
-async function issueSession(user: User, req: Request) {
+async function issueSession(user: User, req: Request, method: LoginMethod) {
   const accessToken = signAccessToken({ sub: user.id, role: user.role, adminRole: user.adminRole });
   const refreshToken = generateRefreshToken();
   await prisma.refreshToken.create({
@@ -33,12 +34,21 @@ async function issueSession(user: User, req: Request) {
       expiresAt: refreshTokenExpiryDate(),
     },
   });
-  await recordAuditEvent({ actorUserId: user.id, action: "auth.login", entityType: "User", entityId: user.id, req });
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+  await recordLogin(user.id, req, { success: true, method });
+  await recordAuditEvent({
+    actorUserId: user.id,
+    action: "auth.login",
+    entityType: "User",
+    entityId: user.id,
+    metadata: { method },
+    req,
+  });
   return { accessToken, refreshToken };
 }
 
 export async function registerUser(input: RegisterRequestDTO, req: Request) {
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
+  const existing = await prisma.user.findFirst({ where: { email: { equals: input.email, mode: "insensitive" } } });
   if (existing) {
     throw new HttpError(409, "An account with this email already exists");
   }
@@ -46,7 +56,7 @@ export async function registerUser(input: RegisterRequestDTO, req: Request) {
   const user = await prisma.user.create({
     data: {
       email: input.email,
-      passwordHash: await bcrypt.hash(input.password, PASSWORD_HASH_ROUNDS),
+      passwordHash: await hashPassword(input.password),
       firstName: input.firstName,
       lastName: input.lastName,
       role: "USER",
@@ -54,7 +64,7 @@ export async function registerUser(input: RegisterRequestDTO, req: Request) {
   });
 
   await recordAuditEvent({ actorUserId: user.id, action: "auth.register", entityType: "User", entityId: user.id, req });
-  const { accessToken, refreshToken } = await issueSession(user, req);
+  const { accessToken, refreshToken } = await issueSession(user, req, "PASSWORD");
   return { user: toAuthUserDTO(user), accessToken, refreshToken };
 }
 
@@ -62,65 +72,84 @@ type LoginResult =
   | { type: "ok"; user: AuthUserDTO; accessToken: string; refreshToken: string }
   | { type: "challenge"; challengeToken: string };
 
-export async function loginUser(input: LoginRequestDTO, req: Request): Promise<LoginResult> {
-  const user = await prisma.user.findUnique({
-    where: { email: input.email },
-    include: { twoFactorSecret: true },
-  });
+// Compared against when the email is unknown, so a miss costs the same
+// bcrypt time as a hit and response timing doesn't reveal which emails exist.
+const DUMMY_PASSWORD_HASH = "$2a$12$k9UQOfYvHc8X.Cnsj1iSX.ddRtGJQO8Wx6JVZKPe3ey3qp6bORGBm";
+const INVALID_CREDENTIALS = "Invalid email or password";
+export const SUSPENDED_MESSAGE = "This account has been suspended. Contact support for help.";
 
-  if (!user || !user.isActive || !(await bcrypt.compare(input.password, user.passwordHash))) {
-    throw new HttpError(401, "Invalid email or password");
+export async function loginUser(input: LoginRequestDTO, req: Request): Promise<LoginResult> {
+  // Exact match first; then case-insensitive, since older accounts were
+  // stored with the casing they registered with.
+  const user =
+    (await prisma.user.findUnique({ where: { email: input.email }, include: { twoFactorSecret: true } })) ??
+    (await prisma.user.findFirst({
+      where: { email: { equals: input.email, mode: "insensitive" }, deletedAt: null },
+      include: { twoFactorSecret: true },
+      orderBy: { createdAt: "asc" },
+    }));
+
+  if (!user || user.deletedAt) {
+    await verifyPassword(input.password, DUMMY_PASSWORD_HASH);
+    throw new HttpError(401, INVALID_CREDENTIALS);
+  }
+
+  await assertNotLockedOut(user.id, "password");
+  if (!(await verifyPassword(input.password, user.passwordHash))) {
+    await recordLogin(user.id, req, { success: false, method: "PASSWORD", failureReason: "Incorrect password" });
+    throw new HttpError(401, INVALID_CREDENTIALS);
+  }
+  // Only revealed after a correct password, so it doesn't leak account state.
+  if (!user.isActive) {
+    await recordLogin(user.id, req, { success: false, method: "PASSWORD", failureReason: "Account suspended" });
+    throw new HttpError(403, SUSPENDED_MESSAGE);
   }
 
   if (user.twoFactorSecret?.enabledAt) {
     return { type: "challenge", challengeToken: signChallengeToken(user.id) };
   }
 
-  const { accessToken, refreshToken } = await issueSession(user, req);
+  const { accessToken, refreshToken } = await issueSession(user, req, "PASSWORD");
   return { type: "ok", user: toAuthUserDTO(user), accessToken, refreshToken };
 }
 
+// Second step of a 2FA login. Accepts an authenticator code or, for someone
+// who lost their phone, one of their backup codes.
 export async function completeTwoFactorLogin(challengeToken: string, code: string, req: Request) {
   let userId: string;
   try {
     userId = verifyChallengeToken(challengeToken);
   } catch {
-    throw new HttpError(401, "Invalid or expired 2FA challenge");
+    throw new HttpError(401, "Your sign-in session expired. Please sign in again.");
   }
 
   const user = await prisma.user.findUnique({ where: { id: userId }, include: { twoFactorSecret: true } });
-  if (!user?.twoFactorSecret?.enabledAt || !verifyTotpCode(user.twoFactorSecret.secret, code)) {
-    throw new HttpError(401, "Invalid 2FA code");
+  if (!user || user.deletedAt || !user.twoFactorSecret?.enabledAt) {
+    throw new HttpError(401, "Your sign-in session expired. Please sign in again.");
+  }
+  if (!user.isActive) throw new HttpError(403, SUSPENDED_MESSAGE);
+
+  await assertNotLockedOut(user.id, "second-factor");
+  const method = await consumeSecondFactor(user.twoFactorSecret, code);
+  if (!method) {
+    await recordLogin(user.id, req, {
+      success: false,
+      method: isTotpCode(code) ? "TOTP" : "BACKUP_CODE",
+      failureReason: "Invalid code",
+    });
+    throw new HttpError(401, "Invalid verification code");
   }
 
-  const { accessToken, refreshToken } = await issueSession(user, req);
+  const { accessToken, refreshToken } = await issueSession(user, req, method);
+  if (method === "BACKUP_CODE") {
+    const remaining = await prisma.backupCode.count({ where: { userId, usedAt: null } });
+    await notify(userId, {
+      type: "account.security",
+      title: "A backup code was used to sign in",
+      body: `${remaining} backup code${remaining === 1 ? "" : "s"} left. Generate new ones from your security settings.`,
+    });
+  }
   return { user: toAuthUserDTO(user), accessToken, refreshToken };
-}
-
-export async function setupTwoFactor(userId: string) {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  if (user.role !== "AGENT" && user.role !== "ADMIN") {
-    throw new HttpError(403, "2FA is only available for agent and admin accounts");
-  }
-
-  const secret = generateTotpSecret();
-  await prisma.twoFactorSecret.upsert({
-    where: { userId },
-    create: { userId, secret },
-    update: { secret, enabledAt: null },
-  });
-
-  return { secret, otpAuthUrl: totpKeyUri(user.email, secret) };
-}
-
-export async function confirmTwoFactorSetup(userId: string, code: string, req: Request) {
-  const record = await prisma.twoFactorSecret.findUnique({ where: { userId } });
-  if (!record || !verifyTotpCode(record.secret, code)) {
-    throw new HttpError(400, "Invalid 2FA code");
-  }
-
-  await prisma.twoFactorSecret.update({ where: { userId }, data: { enabledAt: new Date() } });
-  await recordAuditEvent({ actorUserId: userId, action: "auth.2fa_enabled", entityType: "User", entityId: userId, req });
 }
 
 const REFRESH_INCLUDE = { user: { include: { twoFactorSecret: true } } } as const;
@@ -151,7 +180,7 @@ export async function refreshSession(rawRefreshToken: string) {
     });
   }
 
-  if (stored.expiresAt < new Date() || !stored.user.isActive) {
+  if (stored.expiresAt < new Date() || !stored.user.isActive || stored.user.deletedAt) {
     throw new HttpError(401, "Invalid or expired refresh token");
   }
 

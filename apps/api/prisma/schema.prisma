@@ -22,51 +22,166 @@ enum AdminRole {
 
 // Guest has no account and therefore no row here — it's the absence of a session.
 model User {
-  id              String     @id @default(uuid())
-  email           String     @unique
-  passwordHash    String
-  role            Role
-  adminRole       AdminRole?
-  firstName       String
-  lastName        String
-  phone           String?
-  isActive        Boolean    @default(true)
-  emailVerifiedAt DateTime?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  id               String     @id @default(uuid())
+  email            String     @unique
+  passwordHash     String
+  role             Role
+  adminRole        AdminRole?
+  firstName        String
+  lastName         String
+  phone            String?
+  isActive         Boolean    @default(true)
+  emailVerifiedAt  DateTime?
+  // Mirrors two_factor_secrets.enabledAt so lists/filters don't need a join;
+  // both are written together in modules/security/twoFactor.service.ts.
+  twoFactorEnabled Boolean    @default(false)
+  // Suspension is reversible (isActive=false plus a reason). Deletion is a
+  // soft delete that also anonymizes the row — see modules/admin/users.service.ts.
+  suspendedAt      DateTime?
+  suspensionReason String?
+  deletedAt        DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   agentProfile         AgentProfile?
   twoFactorSecret      TwoFactorSecret?
   refreshTokens        RefreshToken[]
   auditLogs            AuditLog[]
-  applications         Application[]     @relation("Applicant")
+  applications         Application[]        @relation("Applicant")
   // Agent side of the relations; empty for non-agents.
-  assignedApplications Application[]     @relation("AssignedAgent")
-  documentRequests     DocumentRequest[]
+  assignedApplications Application[]        @relation("AssignedAgent")
+  documentRequests     DocumentRequest[]    @relation("DocumentRequestAgent")
   commissions          Commission[]
-  reviewedApplications Application[]     @relation("Reviewer")
+  reviewedApplications Application[]        @relation("Reviewer")
+  backupCodes          BackupCode[]
+  loginHistory         LoginHistory[]
+  passwordResetTokens  PasswordResetToken[] @relation("ResetTokenOwner")
+  issuedResetTokens    PasswordResetToken[] @relation("ResetTokenIssuer")
+  notifications        Notification[]
+  followUps            FollowUp[]
+  applicationNotes     ApplicationNote[]
+  blogPosts            BlogPost[]
+  completedDocRequests DocumentRequest[]    @relation("DocumentRequestCompleter")
 
+  @@index([role, isActive])
+  @@index([createdAt])
   @@map("users")
 }
 
-// Minimal stub — full agent management (licensing workflow, assignment) lands in Phase 4.
 model AgentProfile {
-  userId        String   @id
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  licenseNumber String
-  regions       String[]
-  isActive      Boolean  @default(true)
+  userId            String    @id
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber     String
+  // National Producer Number, optional until licensing verification exists.
+  npn               String?
+  licenseExpiresAt  DateTime? @db.Date
+  // Two-letter state codes the agent is licensed in; drives auto-assignment.
+  regions           String[]
+  // Agent-specific override of the carrier rate, in basis points of
+  // annualized premium. Null = use the carrier's CommissionRate.
+  commissionRateBps Int?
+  isActive          Boolean   @default(true)
+  deactivatedAt     DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @default(now()) @updatedAt
 
   @@map("agent_profiles")
 }
 
+// The TOTP secret, AES-256-GCM encrypted at rest (lib/fieldCrypto.ts). Rows
+// written before encryption was added hold the plaintext secret and are
+// re-encrypted on next use — see readTotpSecret().
 model TwoFactorSecret {
-  userId    String    @id
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  secret    String
-  enabledAt DateTime?
+  userId       String    @id
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  secret       String
+  enabledAt    DateTime?
+  // The last 30-second TOTP time step that was accepted. Codes from that
+  // step or earlier are refused, so an intercepted code can't be replayed.
+  lastUsedStep Int?
+  createdAt    DateTime  @default(now())
 
   @@map("two_factor_secrets")
+}
+
+// One-time 2FA recovery codes. Only an HMAC of each code is stored; the
+// plaintext is shown to the user exactly once.
+model BackupCode {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String    @unique
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("backup_codes")
+}
+
+enum LoginMethod {
+  PASSWORD
+  TOTP
+  BACKUP_CODE
+  PASSWORD_RESET
+}
+
+// Every sign-in attempt against a real account, successful or not.
+model LoginHistory {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  success       Boolean
+  method        LoginMethod
+  failureReason String?
+  ipAddress     String?
+  userAgent     String?
+  // Human-readable summary parsed from the user agent, e.g. "Chrome on macOS".
+  device        String?
+  createdAt     DateTime    @default(now())
+
+  @@index([userId, createdAt])
+  @@map("login_history")
+}
+
+enum PasswordResetPurpose {
+  RESET
+  // A newly created account (e.g. an admin-created agent) setting its first password.
+  INVITE
+}
+
+model PasswordResetToken {
+  id            String               @id @default(uuid())
+  userId        String
+  user          User                 @relation("ResetTokenOwner", fields: [userId], references: [id], onDelete: Cascade)
+  // SHA-256 of the token; the raw token only ever exists in the emailed link.
+  tokenHash     String               @unique
+  purpose       PasswordResetPurpose @default(RESET)
+  requestedById String?
+  requestedBy   User?                @relation("ResetTokenIssuer", fields: [requestedById], references: [id], onDelete: SetNull)
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime             @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// In-app notifications (bell in the portal header). Bodies are shown only
+// after sign-in, but still stay PHI-light: names and a link, no health data.
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
 }
 
 model RefreshToken {
@@ -252,8 +367,11 @@ model Application {
   documents        ApplicationDocument[]
   documentRequests DocumentRequest[]
   commission       Commission?
+  followUps        FollowUp[]
+  notes            ApplicationNote[]
 
   @@index([userId])
+  @@index([createdAt])
   @@index([agentId, status])
   @@index([status, submittedAt])
   @@map("applications")
@@ -277,21 +395,70 @@ model ApplicationDocument {
 
 // ─── Phase 4: agent tooling & commissions ────────────────────────────────────
 
-// An agent asking the applicant for more documents. Resolved automatically
-// once every requested type has been uploaded after the request was made.
+// OPEN      → waiting on the applicant.
+// FULFILLED → every requested type was uploaded after the request (automatic;
+//             resolvedAt is set at the same time).
+// COMPLETED → the agent reviewed the uploads and closed the request.
+// CANCELLED → withdrawn by the agent.
+enum DocumentRequestStatus {
+  OPEN
+  FULFILLED
+  COMPLETED
+  CANCELLED
+}
+
+// An agent asking the applicant for more documents.
 model DocumentRequest {
-  id             String         @id @default(uuid())
+  id             String                @id @default(uuid())
   applicationId  String
-  application    Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  application    Application           @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   agentId        String
-  agent          User           @relation(fields: [agentId], references: [id])
+  agent          User                  @relation("DocumentRequestAgent", fields: [agentId], references: [id])
   message        String
   requestedTypes DocumentType[]
-  createdAt      DateTime       @default(now())
+  status         DocumentRequestStatus @default(OPEN)
+  createdAt      DateTime              @default(now())
+  // When the applicant's uploads satisfied the request (FULFILLED). Also set
+  // on COMPLETED/CANCELLED so "open" is always resolvedAt IS NULL.
   resolvedAt     DateTime?
+  completedAt    DateTime?
+  completedById  String?
+  completedBy    User?                 @relation("DocumentRequestCompleter", fields: [completedById], references: [id], onDelete: SetNull)
 
   @@index([applicationId])
   @@map("document_requests")
+}
+
+// A reminder an agent sets on an application (call the applicant back, etc.).
+model FollowUp {
+  id            String      @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  agentId       String
+  agent         User        @relation(fields: [agentId], references: [id])
+  dueAt         DateTime
+  note          String
+  completedAt   DateTime?
+  createdAt     DateTime    @default(now())
+
+  @@index([agentId, completedAt, dueAt])
+  @@index([applicationId])
+  @@map("follow_ups")
+}
+
+// Internal notes on an application, visible to agents and admins only —
+// never to the applicant.
+model ApplicationNote {
+  id            String      @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  authorId      String
+  author        User        @relation(fields: [authorId], references: [id])
+  body          String
+  createdAt     DateTime    @default(now())
+
+  @@index([applicationId, createdAt])
+  @@map("application_notes")
 }
 
 // Placeholder per-carrier rates until real rate tables exist (CLAUDE.md lists
@@ -328,9 +495,44 @@ model Commission {
   rateBps       Int
   amountCents   Int
   status        CommissionStatus @default(PENDING)
+  paidAt        DateTime?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
   @@index([agentId, status])
+  @@index([carrierId, createdAt])
   @@map("commissions")
+}
+
+// ─── CMS ─────────────────────────────────────────────────────────────────────
+
+// A PUBLISHED post with a future publishedAt is "scheduled": the public blog
+// only lists posts where status = PUBLISHED and publishedAt <= now().
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model BlogPost {
+  id                String         @id @default(uuid())
+  title             String
+  slug              String         @unique
+  excerpt           String?
+  // Sanitized HTML from the rich text editor (modules/cms/sanitize.ts).
+  content           String
+  status            BlogPostStatus @default(DRAFT)
+  publishedAt       DateTime?
+  authorId          String?
+  author            User?          @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  featuredImageKey  String?
+  featuredImageMime String?
+  featuredImageAlt  String?
+  seoTitle          String?
+  seoDescription    String?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([status, publishedAt])
+  @@map("blog_posts")
 }

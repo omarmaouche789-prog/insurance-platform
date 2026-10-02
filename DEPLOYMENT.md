@@ -57,7 +57,17 @@ With `NODE_ENV=production` the API **refuses to start** if any integration is un
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `API_BASE_URL` | yes | The Render API URL, without a trailing `/api`. |
+| `API_BASE_URL` | yes | The Render API URL, without a trailing `/api`. Also used by server-rendered blog pages to fetch posts. |
+| `APP_URL` | recommended | The public web URL; resolves absolute Open Graph image URLs on blog posts. |
+
+## Security notes for this release
+
+- **Migration `20261002210017_tier1_security_admin_cms`** adds 2FA backup codes, login history, password-reset tokens, notifications, follow-ups, internal notes, blog posts, and new columns on `users`, `agent_profiles`, `document_requests`, `two_factor_secrets` and `commissions`. It backfills `users.twoFactorEnabled` and `document_requests.status` from existing data and runs automatically via `prisma migrate deploy`. It is additive: no columns are dropped.
+- **TOTP secrets are now encrypted** with `FIELD_ENCRYPTION_KEY`. Secrets created before this release are plaintext; each one is re-encrypted the next time its owner signs in with an authenticator code. No manual step is needed.
+- **Backup codes** are stored as HMACs keyed from `FIELD_ENCRYPTION_KEY`. Rotating that key invalidates every user's backup codes (their authenticator apps keep working).
+- **Rate limiting** on login, 2FA, password reset and destructive admin actions is per API instance, in memory. Per-account lockouts (10 failed passwords or 5 failed 2FA codes in 15 minutes) are stored in Postgres and hold across instances. Set `TRUST_PROXY=1` on Render or all clients share one IP-based bucket.
+- **Suspension and deletion** revoke refresh tokens immediately; an access token that was already issued stays valid until it expires (`ACCESS_TOKEN_TTL`, 15 minutes by default).
+- Blog featured images are stored with the same adapter as documents (S3 in production), under the `cms/` prefix, and served publicly through `/api/blog/images/:postId`.
 
 ## Integration setup
 

@@ -14,7 +14,9 @@ import { recordAuditEvent } from "../../lib/audit";
 import { decryptJson, encryptField, encryptJson } from "../../lib/fieldCrypto";
 import { HttpError } from "../../middleware/errorHandler";
 import { documentStorage } from "../../integrations/documentStorage";
+import { DOCUMENT_TYPE_LABELS } from "@insurance/shared";
 import { toPlanDTO } from "../plans/plans.service";
+import { notify } from "../notifications/notifications.service";
 import { findAgentForZip } from "../agent/assignment";
 import { sendToCarrier } from "./carrierSubmit";
 import {
@@ -72,8 +74,10 @@ export function toApplicationDTO(app: FullApplication): ApplicationDTO {
       message: r.message,
       requestedTypes: r.requestedTypes,
       agentName: `${r.agent.firstName} ${r.agent.lastName}`,
+      status: r.status,
       createdAt: r.createdAt.toISOString(),
       resolvedAt: r.resolvedAt?.toISOString() ?? null,
+      completedAt: r.completedAt?.toISOString() ?? null,
     })),
     agent: app.agent,
     submissionAttempts: app.submissionAttempts,
@@ -209,8 +213,9 @@ export async function updateApplication(
 }
 
 // Marks open requests fulfilled once every type they asked for has been
-// uploaded since the request was made.
-async function resolveFulfilledRequests(applicationId: string): Promise<void> {
+// uploaded since the request was made. The agent then reviews the upload and
+// marks the request COMPLETED (agent.service.ts).
+async function resolveFulfilledRequests(applicationId: string): Promise<number> {
   const [open, documents] = await Promise.all([
     prisma.documentRequest.findMany({ where: { applicationId, resolvedAt: null } }),
     prisma.applicationDocument.findMany({ where: { applicationId }, select: { type: true, uploadedAt: true } }),
@@ -221,9 +226,10 @@ async function resolveFulfilledRequests(applicationId: string): Promise<void> {
   if (fulfilled.length) {
     await prisma.documentRequest.updateMany({
       where: { id: { in: fulfilled.map((r) => r.id) } },
-      data: { resolvedAt: new Date() },
+      data: { resolvedAt: new Date(), status: "FULFILLED" },
     });
   }
+  return fulfilled.length;
 }
 
 export async function uploadDocument(
@@ -253,7 +259,19 @@ export async function uploadDocument(
   });
   // Remove the replaced file only after the row points at the new one.
   if (previous) await documentStorage.delete(previous.storageKey).catch(() => undefined);
-  if (openRequestedTypes.length) await resolveFulfilledRequests(id);
+  const fulfilledCount = openRequestedTypes.length ? await resolveFulfilledRequests(id) : 0;
+
+  // Tell the assigned agent as soon as something they asked for arrives.
+  if (app.agentId && openRequestedTypes.includes(type)) {
+    await notify(app.agentId, {
+      type: "document.uploaded",
+      title: `${app.firstName} ${app.lastName} uploaded ${DOCUMENT_TYPE_LABELS[type].toLowerCase()}`,
+      body: fulfilledCount
+        ? "A document request is ready for your review."
+        : "Uploaded for an open document request.",
+      link: `/agent/applications/${id}`,
+    });
+  }
 
   await recordAuditEvent({
     actorUserId: userId,

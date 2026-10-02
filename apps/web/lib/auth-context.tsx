@@ -18,6 +18,8 @@ interface AuthContextValue {
   completeTwoFactor: (challengeToken: string, code: string) => Promise<LoginResponseDTO>;
   register: (input: RegisterRequestDTO) => Promise<LoginResponseDTO>;
   logout: () => Promise<void>;
+  // Re-reads the signed-in user (e.g. after turning 2FA on or off).
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -34,11 +36,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // state. Ignore the result of a run that's been superseded.
     let cancelled = false;
 
-    apiFetch<LoginResponseDTO>("/api/auth/refresh", { method: "POST" })
+    // 204 (null body) = no session cookie, i.e. signed out.
+    apiFetch<LoginResponseDTO | null>("/api/auth/refresh", { method: "POST" })
       .then((res) => {
         if (cancelled) return;
-        setAccessToken(res.accessToken);
-        setUser(res.user);
+        setAccessToken(res?.accessToken ?? null);
+        setUser(res?.user ?? null);
       })
       .catch(() => {
         if (cancelled) return;
@@ -92,8 +95,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    if (!accessToken) return;
+    const res = await apiFetch<{ user: AuthUserDTO }>("/api/auth/me", { accessToken });
+    setUser(res.user);
+  }, [accessToken]);
+
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, login, completeTwoFactor, register, logout }}>
+    <AuthContext.Provider value={{ user, accessToken, loading, login, completeTwoFactor, register, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

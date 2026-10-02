@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Role } from "@insurance/shared";
 import { portalPathForRole } from "@insurance/shared";
 import { useAuth } from "../lib/auth-context";
+import { LoadingState } from "./ui/States";
 
 // This is a UX-level guard only (it avoids flashing protected UI at the wrong
 // role). The real authorization boundary is the Express API's requireAuth /
@@ -25,7 +26,7 @@ export function RoleGuard({ role, children }: { role: Role; children: React.Reac
   }, [loading, user, role, router]);
 
   if (loading || !user || user.role !== role) {
-    return <div className="p-8 text-sm text-gray-500">Loading...</div>;
+    return <LoadingState className="min-h-screen" />;
   }
 
   return <>{children}</>;

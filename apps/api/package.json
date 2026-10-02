@@ -17,7 +17,8 @@
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "prisma:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "migrate:deploy": "prisma migrate deploy"
+    "migrate:deploy": "prisma migrate deploy",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1142.0",
@@ -27,11 +28,14 @@
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "express": "^4.21.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.4.0",
     "otplib": "^12.0.1",
     "pdfkit": "^0.20.2",
+    "qrcode": "^1.5.4",
+    "sanitize-html": "^2.18.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -43,7 +47,10 @@
     "@types/multer": "^2.2.0",
     "@types/node": "^20.17.6",
     "@types/pdfkit": "^0.17.6",
+    "@types/qrcode": "^1.5.6",
+    "@types/sanitize-html": "^2.16.2",
     "@types/supertest": "^7.2.1",
+    "@vitest/coverage-v8": "^2.1.9",
     "dotenv-cli": "^7.4.2",
     "eslint": "^9.14.0",
     "prisma": "^5.22.0",

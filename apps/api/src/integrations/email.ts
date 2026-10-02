@@ -21,9 +21,14 @@ export interface EmailTransport {
 export class LogEmailTransport implements EmailTransport {
   readonly sent: EmailMessage[] = [];
 
+  constructor(private readonly printBodies = false) {}
+
   async send(message: EmailMessage): Promise<void> {
     this.sent.push(message);
     console.info(`[email:log] to=${maskEmail(message.to)} subject="${message.subject}"`);
+    // Locally, show the body too so links (password reset, agent invite) can
+    // be followed without an email provider. Bodies never contain PHI.
+    if (this.printBodies) console.info(message.text.replace(/^/gm, "    "));
   }
 }
 
@@ -73,7 +78,7 @@ export function maskEmail(address: string): string {
 }
 
 function createTransport(): EmailTransport {
-  if (!env.sendgrid) return new LogEmailTransport();
+  if (!env.sendgrid) return new LogEmailTransport(!env.isProduction && process.env.NODE_ENV !== "test");
   return new SendGridEmailTransport(env.sendgrid);
 }
 

@@ -4,12 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { AdminApplicationDTO } from "@insurance/shared";
-import { DOCUMENT_TYPE_LABELS, HEALTH_CONDITION_LABELS, canApproveApplications, formatCents } from "@insurance/shared";
+import { DOCUMENT_REQUEST_STATUS_LABELS, DOCUMENT_TYPE_LABELS, HEALTH_CONDITION_LABELS, canApproveApplications, formatCents } from "@insurance/shared";
 import { useAuth } from "../../../../lib/auth-context";
 import { apiFetch, describeApiError } from "../../../../lib/api";
 import { downloadWithAuth } from "../../../../lib/download";
 import { ApplicationStatusBadge } from "../../../../components/applications/ApplicationStatusBadge";
 import { formatBytes } from "../../../../components/applications/DocumentUploadRow";
+import { NotesPanel } from "../../../../components/agent/NotesPanel";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -123,13 +124,13 @@ export default function AdminApplicationDetailPage() {
           <div className="mt-3 flex gap-2">
             <button
               onClick={() => setMode("approve")}
-              className={`rounded px-3 py-1.5 ${mode === "approve" ? "bg-green-700 text-white" : "border border-gray-300 bg-white"}`}
+              className={`rounded px-3 py-1.5 ${mode === "approve" ? "bg-green-700 text-onaccent" : "border border-gray-300 bg-white"}`}
             >
               Approve
             </button>
             <button
               onClick={() => setMode("reject")}
-              className={`rounded px-3 py-1.5 ${mode === "reject" ? "bg-red-700 text-white" : "border border-gray-300 bg-white"}`}
+              className={`rounded px-3 py-1.5 ${mode === "reject" ? "bg-red-700 text-onaccent" : "border border-gray-300 bg-white"}`}
             >
               Reject
             </button>
@@ -257,7 +258,7 @@ export default function AdminApplicationDetailPage() {
               <li key={r.id} className="py-2">
                 <span className="font-medium">{r.requestedTypes.map((t) => DOCUMENT_TYPE_LABELS[t]).join(", ")}</span>{" "}
                 <span className="text-xs text-gray-500">
-                  ({r.resolvedAt ? "fulfilled" : "open"}) · {r.agentName} · {new Date(r.createdAt).toLocaleDateString()}
+                  ({DOCUMENT_REQUEST_STATUS_LABELS[r.status].toLowerCase()}) · {r.agentName} · {new Date(r.createdAt).toLocaleDateString()}
                 </span>
                 <p className="text-gray-700">“{r.message}”</p>
               </li>
@@ -265,6 +266,7 @@ export default function AdminApplicationDetailPage() {
           </ul>
         </Section>
       )}
+      <NotesPanel path={`/api/admin/applications/${app.id}/notes`} readOnly />
     </div>
   );
 }

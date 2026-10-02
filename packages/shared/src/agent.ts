@@ -58,3 +58,34 @@ export interface CommissionSummaryResponseDTO {
   pageSize: number;
   commissions: CommissionDTO[];
 }
+
+export interface FollowUpDTO {
+  id: string;
+  applicationId: string;
+  applicantName: string;
+  dueAt: string;
+  note: string;
+  completedAt: string | null;
+  createdAt: string;
+}
+
+export interface ScheduleFollowUpRequestDTO {
+  dueAt: string; // ISO timestamp, in the future
+  note: string;
+}
+
+export const FOLLOW_UP_FILTERS = ["upcoming", "overdue", "completed", "all"] as const;
+export type FollowUpFilter = (typeof FOLLOW_UP_FILTERS)[number];
+
+export interface FollowUpListResponseDTO {
+  followUps: FollowUpDTO[];
+  counts: { overdue: number; upcoming: number; completed: number };
+}
+
+// Internal to agents and admins; never shown to the applicant.
+export interface ApplicationNoteDTO {
+  id: string;
+  body: string;
+  author: { id: string; firstName: string; lastName: string; role: "USER" | "AGENT" | "ADMIN" };
+  createdAt: string;
+}

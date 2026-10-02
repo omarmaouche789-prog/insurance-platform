@@ -184,13 +184,13 @@ export default function AdminPendingApplicationsPage() {
               <span className="font-medium">{selected.size} selected</span>
               <button
                 onClick={() => setBulkMode("approve")}
-                className={`rounded px-3 py-1.5 ${bulkMode === "approve" ? "bg-green-700 text-white" : "border border-gray-300 bg-white"}`}
+                className={`rounded px-3 py-1.5 ${bulkMode === "approve" ? "bg-green-700 text-onaccent" : "border border-gray-300 bg-white"}`}
               >
                 Approve selected
               </button>
               <button
                 onClick={() => setBulkMode("reject")}
-                className={`rounded px-3 py-1.5 ${bulkMode === "reject" ? "bg-red-700 text-white" : "border border-gray-300 bg-white"}`}
+                className={`rounded px-3 py-1.5 ${bulkMode === "reject" ? "bg-red-700 text-onaccent" : "border border-gray-300 bg-white"}`}
               >
                 Reject selected
               </button>

@@ -12,6 +12,9 @@ import {
   listQueue,
   rejectApplication,
 } from "./review.service";
+import { listNotesForApplication } from "../agent/tooling.service";
+import { prisma } from "../../lib/prisma";
+import { HttpError } from "../../middleware/errorHandler";
 
 // Any admin can read; only SUPER/OPERATIONS admins can decide.
 export const adminApplicationsRouter = Router();
@@ -94,6 +97,17 @@ adminApplicationsRouter.post("/bulk", requireApprover, async (req, res, next) =>
 adminApplicationsRouter.get("/:id", async (req, res, next) => {
   try {
     res.status(200).json({ application: await getApplicationForAdmin(req.auth!.userId, req.params.id, req) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// The assigned agent's internal notes, read-only for admins.
+adminApplicationsRouter.get("/:id/notes", async (req, res, next) => {
+  try {
+    const exists = await prisma.application.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!exists) throw new HttpError(404, "Application not found");
+    res.status(200).json({ notes: await listNotesForApplication(req.params.id) });
   } catch (err) {
     next(err);
   }

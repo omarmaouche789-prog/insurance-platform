@@ -20,6 +20,7 @@ import { FULL_INCLUDE, toApplicationDTO, type FullApplication } from "../applica
 import { sendToCarrier } from "../applications/carrierSubmit";
 import { resubmitBlocker } from "../applications/applications.validation";
 import { renderApplicationPdf } from "./applicationPdf";
+import { notify } from "../notifications/notifications.service";
 
 export interface AgentApplicationFilters {
   statuses?: ApplicationStatus[];
@@ -142,6 +143,12 @@ export async function requestDocuments(
       documentLabels: input.requestedTypes.map((t) => DOCUMENT_TYPE_LABELS[t]),
     }),
   });
+  await notify(app.userId, {
+    type: "document.requested",
+    title: "Your agent requested documents",
+    body: input.requestedTypes.map((t) => DOCUMENT_TYPE_LABELS[t]).join(", "),
+    link: `/account/applications/${id}`,
+  });
   await recordAuditEvent({
     actorUserId: agentId,
     action: "agent.application.request_documents",
@@ -152,6 +159,37 @@ export async function requestDocuments(
   });
 
   return toAgentApplicationDTO(await findAssigned(agentId, id));
+}
+
+// Agent closes a request: COMPLETED once they've reviewed what was uploaded
+// (or decided it's no longer needed), CANCELLED to withdraw it. Either way
+// the applicant can no longer upload against it.
+export async function closeDocumentRequest(
+  agentId: string,
+  applicationId: string,
+  requestId: string,
+  outcome: "COMPLETED" | "CANCELLED",
+  req: Request,
+): Promise<AgentApplicationDTO> {
+  await findAssigned(agentId, applicationId);
+  const now = new Date();
+  const closed = await prisma.documentRequest.updateMany({
+    where: { id: requestId, applicationId, status: { in: ["OPEN", "FULFILLED"] } },
+    data: { status: outcome, completedAt: now, completedById: agentId, resolvedAt: now },
+  });
+  if (closed.count === 0) {
+    const exists = await prisma.documentRequest.findFirst({ where: { id: requestId, applicationId }, select: { id: true } });
+    throw exists ? new HttpError(409, "This request is already closed") : new HttpError(404, "Document request not found");
+  }
+  await recordAuditEvent({
+    actorUserId: agentId,
+    action: outcome === "COMPLETED" ? "agent.document_request.complete" : "agent.document_request.cancel",
+    entityType: "Application",
+    entityId: applicationId,
+    metadata: { requestId },
+    req,
+  });
+  return toAgentApplicationDTO(await findAssigned(agentId, applicationId));
 }
 
 export async function resubmitApplication(agentId: string, id: string, req: Request): Promise<AgentApplicationDTO> {

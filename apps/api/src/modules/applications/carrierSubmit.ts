@@ -149,9 +149,14 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
   // The assigned agent's commission is booked (as PENDING) when the carrier
   // accepts, snapshotting today's premium and rate.
   if (accepted && app.agentId) {
-    const rate = await prisma.commissionRate.findUnique({ where: { carrierId: app.plan.carrierId } });
-    const rateBps = rate?.rateBps ?? 0;
-    if (!rate) console.warn(`No commission rate for carrier ${carrierCode}; booking at 0`);
+    // An agent-specific rate (set in admin agent management) overrides the carrier's.
+    const [profile, rate] = await Promise.all([
+      prisma.agentProfile.findUnique({ where: { userId: app.agentId }, select: { commissionRateBps: true } }),
+      prisma.commissionRate.findUnique({ where: { carrierId: app.plan.carrierId } }),
+    ]);
+    const override = profile?.commissionRateBps ?? null;
+    const rateBps = override ?? rate?.rateBps ?? 0;
+    if (override === null && !rate) console.warn(`No commission rate for carrier ${carrierCode}; booking at 0`);
     await prisma.$transaction([
       applicationUpdate,
       prisma.commission.create({
