@@ -4,7 +4,6 @@ import type { MetalTier, PlanType, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const PASSWORD_HASH_ROUNDS = 12;
-const SEED_PASSWORD = "Password123!";
 
 // ─── Plan catalog (mock data; carriers are fictional) ────────────────────────
 
@@ -224,26 +223,31 @@ async function seedPlanCatalog(): Promise<number> {
   return planCount;
 }
 
-// Quick-login test accounts. Deliberately weak — the seed refuses to run in
-// production (see main), and these never pass the API's own password policy.
+// The only seeded accounts. Deliberately weak test credentials — the seed
+// refuses to run in production (see main), and "123" would never pass the
+// API's own password policy for a real sign-up.
 const TEST_PASSWORD = "123";
 
-// Upserts a test account by login, first renaming an account an older seed
-// created under a previous login (e.g. admin@example.com → admin) so its
-// applications and history carry over. Re-seeding resets the password.
-async function seedTestAccount(
-  login: string,
-  legacyLogins: string[],
-  passwordHash: string,
-  data: Omit<Prisma.UserCreateInput, "email" | "passwordHash">,
-) {
-  const current = await prisma.user.findUnique({ where: { email: login } });
-  const legacy = current ? null : await prisma.user.findFirst({ where: { email: { in: legacyLogins } } });
-  if (legacy) await prisma.user.update({ where: { id: legacy.id }, data: { email: login } });
+const TEST_ACCOUNTS = {
+  admin: { email: "admin@test", firstName: "Ada", lastName: "Admin", role: "ADMIN", adminRole: "SUPER" },
+  // Licensed in every state the seeded ZIPs belong to, so every test
+  // application gets auto-assigned.
+  agent: {
+    email: "agent@test",
+    firstName: "Alex",
+    lastName: "Agent",
+    role: "AGENT",
+    agentProfile: { create: { licenseNumber: "LIC-000001", regions: ["CA", "FL", "NY", "TX"] } },
+  },
+  user: { email: "user@test", firstName: "Uma", lastName: "User", role: "USER" },
+} satisfies Record<string, Omit<Prisma.UserCreateInput, "passwordHash">>;
+
+// Re-seeding resets the password and reactivates the account.
+function seedTestAccount(account: Omit<Prisma.UserCreateInput, "passwordHash">, passwordHash: string) {
   return prisma.user.upsert({
-    where: { email: login },
+    where: { email: account.email },
     update: { passwordHash, isActive: true, suspendedAt: null, suspensionReason: null },
-    create: { ...data, email: login, passwordHash },
+    create: { ...account, passwordHash },
   });
 }
 
@@ -251,63 +255,22 @@ async function main() {
   if (process.env.NODE_ENV === "production") {
     throw new Error("Refusing to seed: the seed creates test accounts with the password '123'.");
   }
-  const passwordHash = await bcrypt.hash(SEED_PASSWORD, PASSWORD_HASH_ROUNDS);
-  const testPasswordHash = await bcrypt.hash(TEST_PASSWORD, PASSWORD_HASH_ROUNDS);
+  const passwordHash = await bcrypt.hash(TEST_PASSWORD, PASSWORD_HASH_ROUNDS);
 
-  const admin = await seedTestAccount("admin", ["admin@example.com"], testPasswordHash, {
-    firstName: "Ada",
-    lastName: "Admin",
-    role: "ADMIN",
-    adminRole: "SUPER",
-  });
-
-  const agent = await seedTestAccount("agent", ["agent@example.com"], testPasswordHash, {
-    firstName: "Alex",
-    lastName: "Agent",
-    role: "AGENT",
-    agentProfile: { create: { licenseNumber: "LIC-000001", regions: ["CA", "NY"] } },
-  });
-
-  // Second agent so every seeded ZIP's state has someone to assign to.
-  const agent2 = await prisma.user.upsert({
-    where: { email: "agent2@example.com" },
-    update: {},
-    create: {
-      email: "agent2@example.com",
-      passwordHash,
-      firstName: "Sam",
-      lastName: "Agent",
-      role: "AGENT",
-      agentProfile: {
-        create: {
-          licenseNumber: "LIC-000002",
-          regions: ["TX", "FL"],
-        },
-      },
-    },
-  });
-
-  const user = await seedTestAccount("usersif", ["user@example.com", "user"], testPasswordHash, {
-    firstName: "Uma",
-    lastName: "User",
-    role: "USER",
-  });
+  const admin = await seedTestAccount(TEST_ACCOUNTS.admin, passwordHash);
+  const agent = await seedTestAccount(TEST_ACCOUNTS.agent, passwordHash);
+  const user = await seedTestAccount(TEST_ACCOUNTS.user, passwordHash);
 
   const planCount = await seedPlanCatalog();
   await seedBlog(admin.id);
 
   if (process.env.SEED_DEMO_DATA === "true") {
-    const demoUsers = await seedDemoHistory([agent.id, agent2.id], admin.id, passwordHash);
-    // eslint-disable-next-line no-console
+    const demoUsers = await seedDemoHistory([agent.id], admin.id, passwordHash);
     console.log(`Seeded ${demoUsers} demo users with application history (SEED_DEMO_DATA=true)`);
   }
 
-  // eslint-disable-next-line no-console
-  console.log("Seeded users:", { admin: admin.email, agent: agent.email, agent2: agent2.email, user: user.email });
-  // eslint-disable-next-line no-console
   console.log(`Seeded ${planCount} plans across ZIPs: ${SEED_ZIPS.join(", ")}`);
-  // eslint-disable-next-line no-console
-  console.log(`Test logins: admin / agent / usersif, password ${TEST_PASSWORD} (agent2@example.com and demo users: ${SEED_PASSWORD})`);
+  console.log(`Test logins (password ${TEST_PASSWORD}): ${admin.email} · ${agent.email} · ${user.email}`);
 }
 
 main()

@@ -15,6 +15,7 @@
     "test": "vitest run",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "prisma:reset": "dotenv -e ../../.env -- prisma migrate reset --force --skip-seed",
     "prisma:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "migrate:deploy": "prisma migrate deploy",

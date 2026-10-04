@@ -75,13 +75,13 @@ npm run -w apps/api prisma:seed         # SEED_DEMO_DATA=true in .env adds demo 
 npm run dev                             # api on :4000, web on :3000
 ```
 
-Seeded test accounts (dev only — the seed refuses to run with `NODE_ENV=production`): `admin` / `123` (ADMIN/SUPER), `agent` / `123` (AGENT, licensed in CA/NY), `usersif` / `123` (USER). The second agent, `agent2@example.com` (TX/FL), and the demo users use `Password123!`. Re-running the seed resets these passwords and renames accounts created by older seeds (`admin@example.com` → `admin`, etc.).
+Seeded test accounts (dev only — the seed refuses to run with `NODE_ENV=production`), all with password `123`: `admin@test` (ADMIN/SUPER), `agent@test` (AGENT, licensed in CA/FL/NY/TX, so every seeded ZIP is assigned to them) and `user@test` (USER). Re-running the seed resets their passwords. To start from an empty database: `npm run -w apps/api prisma:reset` then `npm run -w apps/api prisma:seed`.
 
 **Try it:**
 
 - *2FA* — sign in as anyone, open **Security** from the avatar menu, and follow the three steps. Sign out and back in; try *Lost your phone? Use a backup code*.
-- *Agent flow* — enroll as `usersif` in ZIP 10001 with test SSN `123-45-0001` (the mock carrier rejects it on the first attempt), then sign in as `agent` to preview documents, request more, schedule a follow-up and resubmit. SSN `…0002` simulates a carrier timeout.
-- *Admin* — sign in as `admin`; the dashboard opens on Analytics.
+- *Agent flow* — enroll as `user@test` in ZIP 10001 with test SSN `123-45-0001` (the mock carrier rejects it on the first attempt), then sign in as `agent@test` to preview documents, request more, schedule a follow-up and resubmit. SSN `…0002` simulates a carrier timeout.
+- *Admin* — sign in as `admin@test`; the dashboard opens on Analytics.
 - In development, emails (password resets, invites, 2FA notices) are printed to the API console instead of being sent; copy the link from there.
 
 ## Database migrations
@@ -149,4 +149,5 @@ packages/shared Role enums, DTOs and helpers shared by both apps
 | `npm run -w apps/api test:coverage` | The same, with a coverage report |
 | `npm run -w apps/api typecheck` | Type-checks API source, tests and seed |
 | `npm run -w apps/api prisma:migrate` | Applies Prisma migrations |
-| `npm run -w apps/api prisma:seed` | Seeds the example accounts, plan catalog and blog posts |
+| `npm run -w apps/api prisma:reset` | Drops the database and re-applies all migrations (dev only; doesn't seed) |
+| `npm run -w apps/api prisma:seed` | Seeds the three test accounts, plan catalog and blog posts |
