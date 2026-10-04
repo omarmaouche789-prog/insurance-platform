@@ -19,7 +19,7 @@ npm install
 npm run -w apps/api prisma:generate
 npm run -w apps/api prisma:migrate   # creates schema in Postgres
 npm run -w apps/api prisma:reset     # drops everything and re-applies migrations (no seed)
-npm run -w apps/api prisma:seed      # seeds exactly three test logins, password 123: admin@test (SUPER), agent@test (CA/FL/NY/TX), user@test; plus a mock plan catalog (4 fictional carriers, 16 plans, 6 ZIPs), placeholder commission rates and two blog posts; SEED_DEMO_DATA=true adds ~60 fictional users with six months of history for analytics
+npm run -w apps/api prisma:seed      # seeds exactly three test logins, password 123: admin@test.com (SUPER), agent@test.com (CA/FL/NY/TX), user@test.com; plus a mock plan catalog (4 fictional carriers, 16 plans, 6 ZIPs), placeholder commission rates (no blog posts or other data); SEED_DEMO_DATA=true adds ~60 fictional users with six months of history for analytics
 npm run dev                          # runs api (:4000) and web (:3000) together
 npm run -w apps/api test             # vitest: unit tests + supertest route tests (Prisma and adapters mocked; no DB needed)
 npm run -w apps/api test:coverage    # same, with v8 coverage

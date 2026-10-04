@@ -46,42 +46,6 @@ const TIERS: Array<{
 
 const dollarsToCents = (dollars: number) => Math.round(dollars * 100);
 
-// ─── CMS ─────────────────────────────────────────────────────────────────────
-
-const BLOG_POSTS = [
-  {
-    slug: "how-to-choose-a-health-plan",
-    title: "How to choose a health plan in 5 steps",
-    excerpt: "Premiums, deductibles and networks, explained — so you can compare plans with confidence.",
-    status: "PUBLISHED" as const,
-    content: [
-      "<p>Picking a plan comes down to balancing what you pay every month against what you pay when you need care.</p>",
-      "<h2>1. Start with your doctors</h2><p>If you have doctors you want to keep, check which plan networks include them before anything else.</p>",
-      "<h2>2. Compare total cost, not just premiums</h2><p>A low premium usually means a higher deductible. Add the premium for a year to the out-of-pocket maximum to see your worst case.</p>",
-      "<h2>3. Pick a metal tier</h2><ul><li><strong>Bronze</strong> — lowest premium, highest costs when you get care.</li><li><strong>Silver</strong> — balanced; may qualify for extra savings.</li><li><strong>Gold &amp; Platinum</strong> — higher premium, low costs at the doctor.</li></ul>",
-      "<h2>4. Check prescriptions</h2><p>Look at the generic drug copay if you take regular medication.</p>",
-      "<h2>5. Talk to a licensed agent</h2><p>Our agents can walk you through the options at no cost.</p>",
-    ].join(""),
-  },
-  {
-    slug: "open-enrollment-checklist",
-    title: "Your open enrollment checklist",
-    excerpt: "Documents to gather before you apply.",
-    status: "DRAFT" as const,
-    content: "<p>Have a photo ID, proof of address and, if you're applying for savings, recent proof of income ready.</p>",
-  },
-];
-
-async function seedBlog(authorId: string): Promise<void> {
-  for (const post of BLOG_POSTS) {
-    await prisma.blogPost.upsert({
-      where: { slug: post.slug },
-      update: {},
-      create: { ...post, authorId, publishedAt: post.status === "PUBLISHED" ? new Date() : null },
-    });
-  }
-}
-
 // ─── Optional demo history (SEED_DEMO_DATA=true) ─────────────────────────────
 // Six months of fictional sign-ups, applications, decisions and commissions so
 // the analytics dashboard has something to show in a fresh environment. Never
@@ -229,17 +193,17 @@ async function seedPlanCatalog(): Promise<number> {
 const TEST_PASSWORD = "123";
 
 const TEST_ACCOUNTS = {
-  admin: { email: "admin@test", firstName: "Ada", lastName: "Admin", role: "ADMIN", adminRole: "SUPER" },
+  admin: { email: "admin@test.com", firstName: "Ada", lastName: "Admin", role: "ADMIN", adminRole: "SUPER" },
   // Licensed in every state the seeded ZIPs belong to, so every test
   // application gets auto-assigned.
   agent: {
-    email: "agent@test",
+    email: "agent@test.com",
     firstName: "Alex",
     lastName: "Agent",
     role: "AGENT",
     agentProfile: { create: { licenseNumber: "LIC-000001", regions: ["CA", "FL", "NY", "TX"] } },
   },
-  user: { email: "user@test", firstName: "Uma", lastName: "User", role: "USER" },
+  user: { email: "user@test.com", firstName: "Uma", lastName: "User", role: "USER" },
 } satisfies Record<string, Omit<Prisma.UserCreateInput, "passwordHash">>;
 
 // Re-seeding resets the password and reactivates the account.
@@ -262,7 +226,6 @@ async function main() {
   const user = await seedTestAccount(TEST_ACCOUNTS.user, passwordHash);
 
   const planCount = await seedPlanCatalog();
-  await seedBlog(admin.id);
 
   if (process.env.SEED_DEMO_DATA === "true") {
     const demoUsers = await seedDemoHistory([agent.id], admin.id, passwordHash);
