@@ -75,13 +75,13 @@ npm run -w apps/api prisma:seed         # SEED_DEMO_DATA=true in .env adds demo 
 npm run dev                             # api on :4000, web on :3000
 ```
 
-Seeded accounts (password `Password123!` for all): `admin@example.com` (ADMIN/SUPER), `agent@example.com` (AGENT, licensed in CA/NY), `agent2@example.com` (AGENT, TX/FL), `user@example.com` (USER).
+Seeded test accounts (dev only — the seed refuses to run with `NODE_ENV=production`): `admin` / `123` (ADMIN/SUPER), `agent` / `123` (AGENT, licensed in CA/NY), `usersif` / `123` (USER). The second agent, `agent2@example.com` (TX/FL), and the demo users use `Password123!`. Re-running the seed resets these passwords and renames accounts created by older seeds (`admin@example.com` → `admin`, etc.).
 
 **Try it:**
 
 - *2FA* — sign in as anyone, open **Security** from the avatar menu, and follow the three steps. Sign out and back in; try *Lost your phone? Use a backup code*.
-- *Agent flow* — enroll as `user@example.com` in ZIP 10001 with test SSN `123-45-0001` (the mock carrier rejects it on the first attempt), then sign in as `agent@example.com` to preview documents, request more, schedule a follow-up and resubmit. SSN `…0002` simulates a carrier timeout.
-- *Admin* — sign in as `admin@example.com`; the dashboard opens on Analytics.
+- *Agent flow* — enroll as `usersif` in ZIP 10001 with test SSN `123-45-0001` (the mock carrier rejects it on the first attempt), then sign in as `agent` to preview documents, request more, schedule a follow-up and resubmit. SSN `…0002` simulates a carrier timeout.
+- *Admin* — sign in as `admin`; the dashboard opens on Analytics.
 - In development, emails (password resets, invites, 2FA notices) are printed to the API console instead of being sent; copy the link from there.
 
 ## Database migrations

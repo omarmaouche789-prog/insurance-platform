@@ -271,10 +271,10 @@ describe("login", () => {
   it("rate limits by network", async () => {
     // Validation failures still count, which keeps this test fast (no bcrypt).
     const statuses: number[] = [];
-    for (let i = 0; i < 21; i++) statuses.push((await login({ email: "not-an-email", password: "x" })).status);
+    for (let i = 0; i < 21; i++) statuses.push((await login({ email: "", password: "x" })).status);
     expect(statuses.slice(0, 20).every((s) => s === 400)).toBe(true);
     expect(statuses[20]).toBe(429);
-    const res = await login({ email: "not-an-email", password: "x" });
+    const res = await login({ email: "", password: "x" });
     expect(res.headers["retry-after"]).toBeDefined();
   });
 

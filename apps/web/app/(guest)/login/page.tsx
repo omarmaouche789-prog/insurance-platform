@@ -143,7 +143,7 @@ export default function LoginPage() {
     >
       <form onSubmit={handleLogin} className="space-y-4">
         <Field label="Email" htmlFor="email">
-          <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+          <Input id="email" type="text" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
         </Field>
         <Field
           label={

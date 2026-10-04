@@ -64,7 +64,9 @@ authRouter.post("/register", limiters.login, async (req, res, next) => {
 });
 
 const loginSchema = z.object({
-  email: z.string().trim().email().max(254),
+  // Not .email(): the dev seed's test accounts sign in with bare logins
+  // ("admin"). Registration still requires a real address.
+  email: z.string().trim().min(1).max(254),
   password: z.string().min(1).max(200),
 });
 

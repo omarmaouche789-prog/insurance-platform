@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
-import type { MetalTier, PlanType } from "@prisma/client";
+import type { MetalTier, PlanType, Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const PASSWORD_HASH_ROUNDS = 12;
@@ -224,38 +224,48 @@ async function seedPlanCatalog(): Promise<number> {
   return planCount;
 }
 
-async function main() {
-  const passwordHash = await bcrypt.hash(SEED_PASSWORD, PASSWORD_HASH_ROUNDS);
+// Quick-login test accounts. Deliberately weak — the seed refuses to run in
+// production (see main), and these never pass the API's own password policy.
+const TEST_PASSWORD = "123";
 
-  const admin = await prisma.user.upsert({
-    where: { email: "admin@example.com" },
-    update: {},
-    create: {
-      email: "admin@example.com",
-      passwordHash,
-      firstName: "Ada",
-      lastName: "Admin",
-      role: "ADMIN",
-      adminRole: "SUPER",
-    },
+// Upserts a test account by login, first renaming an account an older seed
+// created under a previous login (e.g. admin@example.com → admin) so its
+// applications and history carry over. Re-seeding resets the password.
+async function seedTestAccount(
+  login: string,
+  legacyLogins: string[],
+  passwordHash: string,
+  data: Omit<Prisma.UserCreateInput, "email" | "passwordHash">,
+) {
+  const current = await prisma.user.findUnique({ where: { email: login } });
+  const legacy = current ? null : await prisma.user.findFirst({ where: { email: { in: legacyLogins } } });
+  if (legacy) await prisma.user.update({ where: { id: legacy.id }, data: { email: login } });
+  return prisma.user.upsert({
+    where: { email: login },
+    update: { passwordHash, isActive: true, suspendedAt: null, suspensionReason: null },
+    create: { ...data, email: login, passwordHash },
+  });
+}
+
+async function main() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Refusing to seed: the seed creates test accounts with the password '123'.");
+  }
+  const passwordHash = await bcrypt.hash(SEED_PASSWORD, PASSWORD_HASH_ROUNDS);
+  const testPasswordHash = await bcrypt.hash(TEST_PASSWORD, PASSWORD_HASH_ROUNDS);
+
+  const admin = await seedTestAccount("admin", ["admin@example.com"], testPasswordHash, {
+    firstName: "Ada",
+    lastName: "Admin",
+    role: "ADMIN",
+    adminRole: "SUPER",
   });
 
-  const agent = await prisma.user.upsert({
-    where: { email: "agent@example.com" },
-    update: {},
-    create: {
-      email: "agent@example.com",
-      passwordHash,
-      firstName: "Alex",
-      lastName: "Agent",
-      role: "AGENT",
-      agentProfile: {
-        create: {
-          licenseNumber: "LIC-000001",
-          regions: ["CA", "NY"],
-        },
-      },
-    },
+  const agent = await seedTestAccount("agent", ["agent@example.com"], testPasswordHash, {
+    firstName: "Alex",
+    lastName: "Agent",
+    role: "AGENT",
+    agentProfile: { create: { licenseNumber: "LIC-000001", regions: ["CA", "NY"] } },
   });
 
   // Second agent so every seeded ZIP's state has someone to assign to.
@@ -277,16 +287,10 @@ async function main() {
     },
   });
 
-  const user = await prisma.user.upsert({
-    where: { email: "user@example.com" },
-    update: {},
-    create: {
-      email: "user@example.com",
-      passwordHash,
-      firstName: "Uma",
-      lastName: "User",
-      role: "USER",
-    },
+  const user = await seedTestAccount("usersif", ["user@example.com", "user"], testPasswordHash, {
+    firstName: "Uma",
+    lastName: "User",
+    role: "USER",
   });
 
   const planCount = await seedPlanCatalog();
@@ -303,7 +307,7 @@ async function main() {
   // eslint-disable-next-line no-console
   console.log(`Seeded ${planCount} plans across ZIPs: ${SEED_ZIPS.join(", ")}`);
   // eslint-disable-next-line no-console
-  console.log(`All seeded accounts use the password: ${SEED_PASSWORD}`);
+  console.log(`Test logins: admin / agent / usersif, password ${TEST_PASSWORD} (agent2@example.com and demo users: ${SEED_PASSWORD})`);
 }
 
 main()
