@@ -199,9 +199,15 @@ export function SecuritySettings() {
                     ? "Your applications contain sensitive personal and health information. Two-factor authentication keeps them safe even if your password leaks."
                     : "Your account can see applicants' personal and health information. We strongly recommend two-factor authentication."}
                 </p>
-                <Button variant="primary" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setSetupOpen(true)}>
-                  Set up 2FA
-                </Button>
+                {s?.setupAvailable === false ? (
+                  <p className="max-w-xs rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                    Two-factor setup is currently turned off by your administrator.
+                  </p>
+                ) : (
+                  <Button variant="primary" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setSetupOpen(true)}>
+                    Set up 2FA
+                  </Button>
+                )}
               </div>
             )}
           </CardBody>

@@ -66,7 +66,7 @@ describe("self-only guard", () => {
     prisma.user.findUnique.mockResolvedValue(makeUser({ passwordHash }));
     const res = await request(app).get(`/api/users/${id}/2fa`).set(auth);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ enabled: false, enabledAt: null, backupCodesRemaining: 0 });
+    expect(res.body).toEqual({ enabled: false, enabledAt: null, backupCodesRemaining: 0, setupAvailable: true });
   });
 });
 
@@ -449,7 +449,7 @@ describe("session endpoints", () => {
   });
 
   it("refresh: rotates the token and refuses deleted or suspended users", async () => {
-    const stored = { id: "rt-1", userId: "user-1", revokedAt: null, replacedByTokenId: null, expiresAt: new Date(Date.now() + 60_000), user: makeUser() };
+    const stored = { id: "rt-1", userId: "user-1", revokedAt: null, replacedByTokenId: null, createdAt: new Date(), expiresAt: new Date(Date.now() + 60_000), user: makeUser() };
     prisma.refreshToken.findUnique.mockResolvedValue(stored);
     prisma.refreshToken.create.mockResolvedValue({ id: "rt-2" });
     const ok = await request(app).post("/api/auth/refresh").set("Cookie", "refresh_token=abc");

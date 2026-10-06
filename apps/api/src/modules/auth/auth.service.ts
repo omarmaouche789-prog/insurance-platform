@@ -11,6 +11,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { assertNotLockedOut, recordLogin } from "../security/loginHistory";
 import { consumeSecondFactor } from "../security/twoFactor.service";
 import { notify } from "../notifications/notifications.service";
+import { getSystemSettings } from "../settings/settings.service";
 
 export function toAuthUserDTO(user: User & { twoFactorSecret?: { enabledAt: Date | null } | null }): AuthUserDTO {
   return {
@@ -182,6 +183,14 @@ export async function refreshSession(rawRefreshToken: string) {
 
   if (stored.expiresAt < new Date() || !stored.user.isActive || stored.user.deletedAt) {
     throw new HttpError(401, "Invalid or expired refresh token");
+  }
+
+  // Idle timeout ("Session timeout" system setting). Every refresh rotates
+  // the token, so a token's createdAt is the session's last activity.
+  const { timeoutMinutes } = (await getSystemSettings()).session;
+  if (Date.now() - stored.createdAt.getTime() > timeoutMinutes * 60_000) {
+    await prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
+    throw new HttpError(401, "Your session timed out. Please sign in again.");
   }
 
   const accessToken = signAccessToken({

@@ -4,15 +4,15 @@ import type { LoginHistoryEntryDTO, LoginHistoryResponseDTO } from "@insurance/s
 import { prisma } from "../../lib/prisma";
 import { parseUserAgent } from "../../lib/userAgent";
 import { HttpError } from "../../middleware/errorHandler";
+import { getSystemSettings } from "../settings/settings.service";
 
 const MAX_USER_AGENT = 500;
 
 // Per-account lockout, shared across API instances because it reads the
 // database: too many failures in the window and further attempts are refused
-// before the password or code is even checked.
+// before the password or code is even checked. The limit is the "Max login
+// attempts" system setting, applied separately to passwords and 2FA codes.
 export const LOCKOUT_WINDOW_MS = 15 * 60 * 1000;
-export const MAX_FAILED_PASSWORD_ATTEMPTS = 10;
-export const MAX_FAILED_SECOND_FACTOR_ATTEMPTS = 5;
 
 export async function recordLogin(
   userId: string,
@@ -42,7 +42,7 @@ export async function assertNotLockedOut(userId: string, kind: "password" | "sec
       createdAt: { gte: new Date(Date.now() - LOCKOUT_WINDOW_MS) },
     },
   });
-  const max = kind === "password" ? MAX_FAILED_PASSWORD_ATTEMPTS : MAX_FAILED_SECOND_FACTOR_ATTEMPTS;
+  const max = (await getSystemSettings()).session.maxLoginAttempts;
   if (failures >= max) {
     throw new HttpError(429, "Too many failed attempts on this account. Try again in 15 minutes.");
   }

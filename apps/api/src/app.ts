@@ -15,6 +15,8 @@ import { adminCmsRouter, blogRouter } from "./modules/cms/cms.routes";
 import { notificationsRouter } from "./modules/notifications/notifications.routes";
 import { plansRouter } from "./modules/plans/plans.routes";
 import { securityRouter } from "./modules/security/security.routes";
+import { maintenanceGate } from "./modules/settings/maintenance";
+import { adminSettingsRouter, statusRouter } from "./modules/settings/settings.routes";
 
 export function createApp() {
   const app = express();
@@ -31,6 +33,10 @@ export function createApp() {
     res.status(200).json({ status: "ok" });
   });
 
+  // Before every router: in maintenance mode only admins (and auth) get through.
+  app.use(maintenanceGate);
+  app.use("/api/status", statusRouter);
+
   app.use("/api/auth", authRouter);
   app.use("/api/users", securityRouter);
   app.use("/api/notifications", notificationsRouter);
@@ -44,6 +50,7 @@ export function createApp() {
   app.use("/api/admin/analytics", adminAnalyticsRouter);
   app.use("/api/admin/cms", adminCmsRouter);
   app.use("/api/admin/notifications", adminNotificationsRouter);
+  app.use("/api/admin/settings", adminSettingsRouter);
 
   app.use(errorHandler);
 

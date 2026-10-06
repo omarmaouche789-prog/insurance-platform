@@ -10,3 +10,4 @@ export * from "./agents";
 export * from "./analytics";
 export * from "./cms";
 export * from "./notifications";
+export * from "./settings";

@@ -64,6 +64,7 @@ model User {
   blogPosts            BlogPost[]
   completedDocRequests DocumentRequest[]    @relation("DocumentRequestCompleter")
   SmsTemplate          SmsTemplate[]
+  SystemSetting        SystemSetting[]
 
   @@index([role, isActive])
   @@index([createdAt])
@@ -552,4 +553,19 @@ model SmsTemplate {
   updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@map("sms_templates")
+}
+
+// ─── System settings ─────────────────────────────────────────────────────────
+
+// One row per settings section ("features", "maintenance", "session"),
+// value is JSON. Missing rows/fields fall back to SYSTEM_SETTINGS_DEFAULTS
+// in shared, so new settings need no migration or seed.
+model SystemSetting {
+  key         String   @id
+  value       Json
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("system_settings")
 }

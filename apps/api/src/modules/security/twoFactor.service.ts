@@ -11,6 +11,7 @@ import { HttpError } from "../../middleware/errorHandler";
 import { email } from "../../integrations/email";
 import { emailTemplates } from "../../integrations/emailTemplates";
 import { notify } from "../notifications/notifications.service";
+import { getSystemSettings } from "../settings/settings.service";
 import {
   generateBackupCodes,
   hashBackupCode,
@@ -67,12 +68,27 @@ export async function getTwoFactorStatus(userId: string): Promise<TwoFactorStatu
   const backupCodesRemaining = enabledAt
     ? await prisma.backupCode.count({ where: { userId, usedAt: null } })
     : 0;
-  return { enabled: Boolean(enabledAt), enabledAt: enabledAt?.toISOString() ?? null, backupCodesRemaining };
+  const { features } = await getSystemSettings();
+  return {
+    enabled: Boolean(enabledAt),
+    enabledAt: enabledAt?.toISOString() ?? null,
+    backupCodesRemaining,
+    setupAvailable: features.twoFactor,
+  };
 }
 
 // Step 1 of enrollment: a fresh secret, not yet active. Calling it again
 // before confirming simply replaces the pending secret.
+const SETUP_OFF = "Two-factor setup is currently turned off by your administrator.";
+
+// The System Settings switch only stops new enrollments. Disabling, backup
+// codes and the sign-in challenge keep working for anyone already enrolled.
+async function assertSetupAvailable(): Promise<void> {
+  if (!(await getSystemSettings()).features.twoFactor) throw new HttpError(403, SETUP_OFF);
+}
+
 export async function beginTwoFactorSetup(userId: string, req: Request): Promise<TwoFactorEnableResponseDTO> {
+  await assertSetupAvailable();
   const user = await findUserWithFactor(userId);
   if (user.twoFactorSecret?.enabledAt) {
     throw new HttpError(409, "Two-factor authentication is already on. Turn it off first to set up a new device.");
@@ -105,6 +121,7 @@ async function replaceBackupCodes(userId: string): Promise<string[]> {
 // Step 2: prove the authenticator works, which turns 2FA on and issues the
 // one-time view of the backup codes.
 export async function confirmTwoFactorSetup(userId: string, code: string, req: Request): Promise<BackupCodesResponseDTO> {
+  await assertSetupAvailable();
   const user = await findUserWithFactor(userId);
   const record = user.twoFactorSecret;
   if (!record) throw new HttpError(400, "Start two-factor setup first");

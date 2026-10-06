@@ -19,6 +19,7 @@ Online health insurance marketplace: ZIP-based plan discovery, comparison, and e
 | Create / edit / deactivate agents | ✓ | ✓ | | |
 | Record commission payouts | ✓ | | ✓ | |
 | Write and publish blog posts | ✓ | ✓ | | |
+| Change system settings (features, maintenance, sessions) | ✓ | | | |
 
 ### Two-factor authentication (all roles)
 
@@ -30,7 +31,7 @@ Every account — user, agent, admin — can turn on TOTP 2FA from **Security** 
 
 Signing in then asks for a code after the password. **Lost your phone?** Choose *Use a backup code* on the sign-in screen; each code works once and you're warned when few remain. With no codes left, an admin can reset 2FA from the user's profile after verifying identity out-of-band. Turning 2FA off needs your password **and** a current code. New backup codes can be generated (with an authenticator code) at any time; the old set stops working.
 
-Security details: TOTP secrets are AES-256-GCM encrypted at rest; each 30-second code can be used only once (replay protection); backup codes are stored as HMACs and burned atomically; 5 wrong codes in 15 minutes locks 2FA sign-in for that account.
+Security details: TOTP secrets are AES-256-GCM encrypted at rest; each 30-second code can be used only once (replay protection); backup codes are stored as HMACs and burned atomically; too many wrong codes in 15 minutes (5 by default, set in System settings) locks sign-in for that account.
 
 ### Admin user management (`/admin/users`)
 
@@ -47,6 +48,14 @@ Date-range presets or custom dates; user acquisition (weekly or monthly), applic
 ### Notification templates (`/admin/notifications`)
 
 Two tabs. **Email templates** previews every email the platform sends (rendered with sample data, HTML or plain text); the wording lives in code. **SMS templates** lists the text messages (welcome, document request, submitted, approved, not approved, status update) with an editor: insert `{userName}`, `{appId}` or `{status}`, see a live phone preview with character, segment and encoding counts, switch a template on or off, save, reset to the default, and send a test to any number. Tests go through Twilio when `TWILIO_*` is configured and are written to the API log otherwise. SMS templates aren't sent automatically by any workflow yet.
+
+### System settings (`/admin/settings`)
+
+Every admin can view; only SUPER admins can change. Saved in the `system_settings` table, audit-logged as `admin.settings.update` with what changed, and picked up by every API instance within about 10 seconds.
+
+- **Feature toggles.** *Two-factor authentication* (on by default): turning it off stops new 2FA enrollments, but accounts that already have 2FA are still asked for a code. *Plan recommendations*, *SMS notifications* and *HIPAA compliance mode* are saved but don't change anything yet. The page labels them "Not active yet", since the recommendation engine, automatic SMS and the HIPAA mode's rules don't exist yet.
+- **Maintenance mode.** When on, the API answers every non-admin request with `503` (`code: "MAINTENANCE"`, `Retry-After`). The web app shows the admin's message full-screen to everyone but admins, and admins see a banner instead. Sign-in, password reset, `/api/health` and `/api/status` stay open, so an admin can always get in and turn it off. Turning it on asks for confirmation.
+- **Sessions.** *Session timeout* (default 30 minutes, 5–1440) is an idle timeout: a session that hasn't been refreshed for that long has to sign in again. *Max login attempts* (default 5, 3–20) is how many wrong passwords or 2FA codes an account gets in 15 minutes before it's locked for the rest of that window.
 
 ### Blog CMS (`/admin/cms`)
 
@@ -104,6 +113,7 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `agent_profiles` | + `npn`, `licenseExpiresAt`, `commissionRateBps` (override), `deactivatedAt`, timestamps |
 | `document_requests` | + `status` (OPEN/FULFILLED/COMPLETED/CANCELLED, backfilled), `completedAt`, `completedById` |
 | `follow_ups`, `application_notes`, `notifications` | new — agent tooling and in-app notifications |
+| `system_settings` | new — one JSON row per section (`features`, `maintenance`, `session`), with who changed it last; missing rows fall back to defaults |
 | `blog_posts` | new — title, slug, content, status, `publishedAt`, author, featured image, SEO fields |
 | `commissions` | + `paidAt` |
 
@@ -131,9 +141,11 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `GET /api/admin/analytics/{users,approvals,revenue,funnel,export}` | admin | Analytics; `from`/`to` (YYYY-MM-DD), `interval=week\|month` |
 | `GET/POST /api/admin/cms/posts` · `GET/PUT/DELETE /:id` · `POST/DELETE /:id/image` | admin / SUPER·OPS | Blog CMS |
 | `GET /api/admin/notifications/email/templates` · `GET /sms/templates` · `PUT /sms/templates/:key` · `POST /sms/templates/:key/reset` · `POST /sms/send` | admin / SUPER·OPS | Notification templates and SMS test send |
+| `GET /api/admin/settings` · `POST /api/admin/settings` | admin / SUPER | System settings (POST takes the full settings object) |
+| `GET /api/status` | public | Maintenance status for the web app's maintenance screen |
 | `GET /api/blog/posts` · `GET /posts/:slug` · `GET /images/:id` | public | Published posts |
 
-Errors are JSON `{ "error": "…" }` with the usual status codes: 400 validation (with `details.fieldErrors`), 401, 403, 404, 409 conflict/state, 429 rate limited (with `Retry-After`).
+Errors are JSON `{ "error": "…" }` with the usual status codes: 400 validation (with `details.fieldErrors`), 401, 403, 404, 409 conflict/state, 429 rate limited (with `Retry-After`), 503 maintenance mode (`code: "MAINTENANCE"`).
 
 ## Layout
 
