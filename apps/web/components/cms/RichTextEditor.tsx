@@ -84,7 +84,7 @@ function Toolbar({ editor, onLink, onImage }: { editor: Editor; onLink: () => vo
   const i = "h-4 w-4";
   const chain = () => editor.chain().focus();
   return (
-    <div className="sticky top-14 z-10 flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-white/95 px-2 py-1.5 backdrop-blur" role="toolbar" aria-label="Formatting">
+    <div className="flex flex-wrap items-center gap-0.5 border-b border-gray-200 bg-gray-50 px-2 py-1.5" role="toolbar" aria-label="Formatting">
       <ToolbarButton label="Heading" active={s.h2} onClick={() => chain().toggleHeading({ level: 2 }).run()}><Heading2 className={i} /></ToolbarButton>
       <ToolbarButton label="Subheading" active={s.h3} onClick={() => chain().toggleHeading({ level: 3 }).run()}><Heading3 className={i} /></ToolbarButton>
       <Divider />

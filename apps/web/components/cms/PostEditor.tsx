@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, CalendarClock, Eye, ImagePlus, Rocket, Save, Trash2, Undo2, X } from "lucide-react";
 import type { BlogPostDTO, BlogPostStatus, UpsertBlogPostRequestDTO } from "@insurance/shared";
@@ -59,6 +59,33 @@ function draftFrom(post: BlogPostDTO | null): Draft {
     schedule: Boolean(future),
     publishAt: future ? toLocalInput(post!.publishedAt) : "",
   };
+}
+
+// Wraps long titles onto more lines instead of clipping them, and grows to
+// fit; Enter is swallowed because titles are a single line of text.
+function TitleInput({ value, onChange, disabled, invalid }: { value: string; onChange: (v: string) => void; disabled: boolean; invalid: boolean }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    // scrollHeight excludes the border; add it back (box-sizing is border-box).
+    el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      id="post-title"
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value.replace(/\n/g, " "))}
+      onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+      placeholder="Give your post a clear, descriptive title"
+      disabled={disabled}
+      aria-invalid={invalid || undefined}
+      className="block w-full resize-none overflow-hidden break-words rounded-lg border border-gray-300 bg-white px-3 py-2 text-xl font-semibold leading-snug tracking-tight text-gray-900 shadow-sm placeholder:font-normal placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:bg-gray-50"
+    />
+  );
 }
 
 export function PostEditor({ initial }: { initial: BlogPostDTO | null }) {
@@ -224,48 +251,53 @@ export function PostEditor({ initial }: { initial: BlogPostDTO | null }) {
   const disabled = !canEdit || busy !== null;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div className="min-w-0 space-y-4">
+    // grid-cols-1 is minmax(0, 1fr): without it the single mobile column
+    // grows to its widest child and pushes fields off-screen.
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-5">
         {!canEdit && <Alert tone="blue">You have read-only access to the blog. Super and operations admins can edit posts.</Alert>}
         {error && <Alert>{error}</Alert>}
+
+        <Card>
+          <CardBody className="space-y-5">
+            <Field label="Title" htmlFor="post-title" error={fieldErrors.title} required>
+              <TitleInput value={draft.title} onChange={(v) => set("title", v)} disabled={!canEdit} invalid={Boolean(fieldErrors.title)} />
+              <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-gray-500">
+                <span className="shrink-0">URL: /blog/</span>
+                <input
+                  aria-label="URL slug"
+                  value={effectiveSlug}
+                  onChange={(e) => {
+                    setSlugTouched(true);
+                    set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"));
+                  }}
+                  disabled={!canEdit}
+                  placeholder="post-url"
+                  className="min-w-[10rem] flex-1 rounded-md border border-transparent bg-gray-50 px-2 py-1 font-mono text-sm text-gray-700 hover:border-gray-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                />
+              </div>
+              {fieldErrors.slug && <p className="mt-1 text-xs text-red-600">{fieldErrors.slug}</p>}
+            </Field>
+
+            <Field
+              label={<span className="flex justify-between">Excerpt <CharCount value={draft.excerpt} max={BLOG_EXCERPT_MAX} /></span>}
+              htmlFor="post-excerpt"
+              hint="Shown on the blog index and under the title."
+              error={fieldErrors.excerpt}
+            >
+              <Textarea id="post-excerpt" value={draft.excerpt} onChange={(e) => set("excerpt", e.target.value)} disabled={!canEdit} rows={3} className="min-h-[96px]" />
+            </Field>
+          </CardBody>
+        </Card>
+
         <div>
-          <label htmlFor="post-title" className="sr-only">Title</label>
-          <input
-            id="post-title"
-            value={draft.title}
-            onChange={(e) => set("title", e.target.value)}
-            placeholder="Post title"
-            disabled={!canEdit}
-            className="w-full border-0 bg-transparent px-0 text-3xl font-bold tracking-tight text-gray-900 placeholder:text-gray-300 focus:outline-none focus:ring-0"
-            aria-invalid={Boolean(fieldErrors.title) || undefined}
-          />
-          {fieldErrors.title && <p className="text-sm text-red-600">{fieldErrors.title}</p>}
-          <div className="mt-1 flex items-center gap-1 text-sm text-gray-500">
-            <span className="shrink-0">/blog/</span>
-            <input
-              aria-label="URL slug"
-              value={effectiveSlug}
-              onChange={(e) => {
-                setSlugTouched(true);
-                set("slug", e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"));
-              }}
-              disabled={!canEdit}
-              placeholder="post-url"
-              className="min-w-0 flex-1 rounded border-0 bg-transparent px-1 py-0.5 font-mono text-sm text-gray-700 focus:bg-gray-100 focus:outline-none"
-            />
-          </div>
-          {fieldErrors.slug && <p className="text-sm text-red-600">{fieldErrors.slug}</p>}
+          <p className="mb-1.5 text-sm font-medium text-gray-700">Content</p>
+          <RichTextEditor value={draft.content} onChange={(html) => set("content", html)} />
+          {fieldErrors.content && <p className="mt-1.5 text-xs text-red-600">{fieldErrors.content}</p>}
         </div>
-
-        <Field label={<span className="flex justify-between">Excerpt <CharCount value={draft.excerpt} max={BLOG_EXCERPT_MAX} /></span>} htmlFor="post-excerpt" hint="Shown on the blog index and under the title." error={fieldErrors.excerpt}>
-          <Textarea id="post-excerpt" value={draft.excerpt} onChange={(e) => set("excerpt", e.target.value)} disabled={!canEdit} className="min-h-[64px]" />
-        </Field>
-
-        <RichTextEditor value={draft.content} onChange={(html) => set("content", html)} />
-        {fieldErrors.content && <p className="text-sm text-red-600">{fieldErrors.content}</p>}
       </div>
 
-      <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
+      <aside className="min-w-0 space-y-4">
         <Card>
           <CardHeader title="Publishing" actions={<PostStatusBadge status={displayStatus} />} />
           <CardBody className="space-y-4">
