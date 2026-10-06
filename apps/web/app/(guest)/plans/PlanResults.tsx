@@ -1,14 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import type { PlanSearchResponseDTO, PlanSort } from "@insurance/shared";
-import { MAX_COMPARE_PLANS, PLAN_SORTS } from "@insurance/shared";
+import { ArrowRight, Info, X } from "lucide-react";
+import type { PlanDTO, PlanSearchResponseDTO, PlanSort } from "@insurance/shared";
+import { formatCents, MAX_COMPARE_PLANS, PLAN_SORTS } from "@insurance/shared";
 import { apiFetch, ApiError } from "../../../lib/api";
 import { PlanCard } from "../../../components/plans/PlanCard";
 import { PlanFilters, type PlanFilterValues } from "../../../components/plans/PlanFilters";
 import { ZipSearchForm } from "../../../components/plans/ZipSearchForm";
+import { PlanDetailsModal } from "../../../components/plans/PlanDetailsModal";
+import { enrollHref } from "../../../components/plans/planInfo";
+import { Button, ButtonLink } from "../../../components/ui/Button";
 
 function listParam(params: URLSearchParams, key: string): string[] {
   return params.get(key)?.split(",").filter(Boolean) ?? [];
@@ -50,7 +53,12 @@ export function PlanResults() {
   const [data, setData] = useState<PlanSearchResponseDTO | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Plans ticked for side-by-side comparison (up to MAX_COMPARE_PLANS).
   const [selected, setSelected] = useState<string[]>([]);
+  // The single plan the shopper has picked to enroll in. Kept as the full
+  // plan so the bottom bar still works after paging or filtering it away.
+  const [chosen, setChosen] = useState<PlanDTO | null>(null);
+  const [detailsPlan, setDetailsPlan] = useState<PlanDTO | null>(null);
 
   useEffect(() => {
     if (!zip) return;
@@ -131,14 +139,20 @@ export function PlanResults() {
               {hasFilters ? "No plans match these filters. Try removing some." : "No plans are sold in this ZIP yet."}
             </p>
           )}
-          <div className={`space-y-4 ${loading ? "opacity-60" : ""}`}>
+          {data && data.plans.length > 0 && (
+            <p className="mb-3 text-sm text-gray-500">Click a plan to select it · double-click for full details</p>
+          )}
+          <div role="radiogroup" aria-label="Choose a plan" className={`space-y-4 ${loading ? "opacity-60" : ""}`}>
             {data?.plans.map((plan) => (
               <PlanCard
                 key={plan.id}
                 plan={plan}
-                selected={selected.includes(plan.id)}
-                selectDisabled={selected.length >= MAX_COMPARE_PLANS}
-                onToggleSelect={toggleSelect}
+                chosen={chosen?.id === plan.id}
+                onChoose={setChosen}
+                onShowDetails={setDetailsPlan}
+                compared={selected.includes(plan.id)}
+                compareDisabled={selected.length >= MAX_COMPARE_PLANS}
+                onToggleCompare={toggleSelect}
               />
             ))}
           </div>
@@ -159,25 +173,52 @@ export function PlanResults() {
         </section>
       </div>
 
-      {selected.length > 0 && (
-        <div className="fixed inset-x-0 bottom-0 border-t border-gray-200 bg-white px-6 py-3">
-          <div className="mx-auto flex max-w-6xl items-center justify-between text-sm">
-            <span>
-              {selected.length} of {MAX_COMPARE_PLANS} selected
-              <button onClick={() => setSelected([])} className="ml-3 text-gray-500 hover:underline">
-                Clear
-              </button>
-            </span>
-            {selected.length >= 2 ? (
-              <Link href={`/compare?ids=${selected.join(",")}`} className="rounded bg-gray-900 px-4 py-2 text-white">
-                Compare plans
-              </Link>
+      {(chosen || selected.length > 0) && (
+        <div className="fixed inset-x-0 bottom-0 z-20 animate-slide-in border-t border-gray-200 bg-white/95 shadow-overlay backdrop-blur">
+          <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            {chosen ? (
+              <div className="flex min-w-0 items-center gap-3">
+                <button type="button" onClick={() => setChosen(null)} className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Clear selected plan">
+                  <X className="h-4 w-4" />
+                </button>
+                <div className="min-w-0">
+                  <p className="text-xs text-gray-500">Selected plan</p>
+                  <p className="truncate font-medium text-gray-900">
+                    {chosen.name} · <span className="tabular-nums">{formatCents(chosen.monthlyPremiumCents)}/mo</span>
+                  </p>
+                </div>
+                <Button size="sm" variant="ghost" icon={<Info className="h-3.5 w-3.5" />} onClick={() => setDetailsPlan(chosen)}>
+                  Details
+                </Button>
+                <ButtonLink href={enrollHref(chosen)} size="sm" variant="accent">
+                  Enroll <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                </ButtonLink>
+              </div>
             ) : (
-              <span className="text-gray-500">Select at least 2 to compare</span>
+              <span className="text-gray-500">Select a plan to enroll</span>
+            )}
+            {selected.length > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-gray-600">
+                  {selected.length} of {MAX_COMPARE_PLANS} to compare
+                  <button onClick={() => setSelected([])} className="ml-2 text-gray-500 hover:underline">
+                    Clear
+                  </button>
+                </span>
+                {selected.length >= 2 ? (
+                  <ButtonLink href={`/compare?ids=${selected.join(",")}`} size="sm" variant="primary">
+                    Compare plans
+                  </ButtonLink>
+                ) : (
+                  <span className="text-gray-400">Pick at least 2</span>
+                )}
+              </div>
             )}
           </div>
         </div>
       )}
+
+      <PlanDetailsModal plan={detailsPlan} onClose={() => setDetailsPlan(null)} />
     </div>
   );
 }
