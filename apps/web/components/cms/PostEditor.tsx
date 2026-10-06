@@ -61,9 +61,29 @@ function draftFrom(post: BlogPostDTO | null): Draft {
   };
 }
 
-// Wraps long titles onto more lines instead of clipping them, and grows to
-// fit; Enter is swallowed because titles are a single line of text.
-function TitleInput({ value, onChange, disabled, invalid }: { value: string; onChange: (v: string) => void; disabled: boolean; invalid: boolean }) {
+// Grows to fit its text, so nothing is ever clipped or hidden behind an
+// inner scrollbar. `singleLine` swallows Enter (titles are one line).
+function AutoGrowTextarea({
+  id,
+  value,
+  onChange,
+  disabled,
+  invalid,
+  placeholder,
+  minRows = 1,
+  singleLine = false,
+  className = "",
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+  invalid?: boolean;
+  placeholder?: string;
+  minRows?: number;
+  singleLine?: boolean;
+  className?: string;
+}) {
   const ref = useRef<HTMLTextAreaElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -75,15 +95,15 @@ function TitleInput({ value, onChange, disabled, invalid }: { value: string; onC
   return (
     <textarea
       ref={ref}
-      id="post-title"
-      rows={1}
+      id={id}
+      rows={minRows}
       value={value}
-      onChange={(e) => onChange(e.target.value.replace(/\n/g, " "))}
-      onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-      placeholder="Give your post a clear, descriptive title"
+      onChange={(e) => onChange(singleLine ? e.target.value.replace(/\n/g, " ") : e.target.value)}
+      onKeyDown={singleLine ? (e) => e.key === "Enter" && e.preventDefault() : undefined}
+      placeholder={placeholder}
       disabled={disabled}
       aria-invalid={invalid || undefined}
-      className="block w-full resize-none overflow-hidden break-words rounded-lg border border-gray-300 bg-white px-3 py-2 text-xl font-semibold leading-snug tracking-tight text-gray-900 shadow-sm placeholder:font-normal placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:bg-gray-50"
+      className={`block w-full resize-none overflow-hidden break-words rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:bg-gray-50 ${className}`}
     />
   );
 }
@@ -259,9 +279,18 @@ export function PostEditor({ initial }: { initial: BlogPostDTO | null }) {
         {error && <Alert>{error}</Alert>}
 
         <Card>
-          <CardBody className="space-y-5">
+          <CardBody className="space-y-4">
             <Field label="Title" htmlFor="post-title" error={fieldErrors.title} required>
-              <TitleInput value={draft.title} onChange={(v) => set("title", v)} disabled={!canEdit} invalid={Boolean(fieldErrors.title)} />
+              <AutoGrowTextarea
+                id="post-title"
+                value={draft.title}
+                onChange={(v) => set("title", v)}
+                disabled={!canEdit}
+                invalid={Boolean(fieldErrors.title)}
+                placeholder="Give your post a clear, descriptive title"
+                singleLine
+                className="text-lg font-semibold leading-snug tracking-tight placeholder:font-normal"
+              />
               <div className="mt-2 flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-gray-500">
                 <span className="shrink-0">URL: /blog/</span>
                 <input
@@ -285,7 +314,16 @@ export function PostEditor({ initial }: { initial: BlogPostDTO | null }) {
               hint="Shown on the blog index and under the title."
               error={fieldErrors.excerpt}
             >
-              <Textarea id="post-excerpt" value={draft.excerpt} onChange={(e) => set("excerpt", e.target.value)} disabled={!canEdit} rows={3} className="min-h-[96px]" />
+              <AutoGrowTextarea
+                id="post-excerpt"
+                value={draft.excerpt}
+                onChange={(v) => set("excerpt", v)}
+                disabled={!canEdit}
+                invalid={Boolean(fieldErrors.excerpt)}
+                placeholder="One or two sentences summarizing the post"
+                minRows={2}
+                className="text-sm leading-relaxed"
+              />
             </Field>
           </CardBody>
         </Card>
@@ -300,7 +338,7 @@ export function PostEditor({ initial }: { initial: BlogPostDTO | null }) {
       <aside className="min-w-0 space-y-4">
         <Card>
           <CardHeader title="Publishing" actions={<PostStatusBadge status={displayStatus} />} />
-          <CardBody className="space-y-4">
+          <CardBody className="space-y-3">
             {post?.publishedAt && (
               <p className="text-sm text-gray-500">
                 {displayStatus === "SCHEDULED" ? "Goes live" : displayStatus === "PUBLISHED" ? "Published" : "Planned for"} {formatDateTime(post.publishedAt)}
@@ -365,11 +403,13 @@ export function PostEditor({ initial }: { initial: BlogPostDTO | null }) {
                 type="button"
                 disabled={disabled}
                 onClick={() => fileInput.current?.click()}
-                className="flex aspect-[2/1] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 text-sm text-gray-500 transition-colors hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 px-3 py-4 text-sm text-gray-500 transition-colors hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-50"
               >
-                <ImagePlus className="h-6 w-6" aria-hidden />
-                {busy === "image" ? "Uploading…" : "Upload image"}
-                <span className="text-xs text-gray-400">JPEG, PNG, WebP or GIF · up to 5 MB</span>
+                <ImagePlus className="h-6 w-6 shrink-0" aria-hidden />
+                <span className="text-left">
+                  <span className="block font-medium">{busy === "image" ? "Uploading…" : "Upload image"}</span>
+                  <span className="block text-xs text-gray-400">JPEG, PNG, WebP or GIF · up to 5 MB</span>
+                </span>
               </button>
             )}
             <input

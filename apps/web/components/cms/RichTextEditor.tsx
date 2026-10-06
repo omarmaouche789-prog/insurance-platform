@@ -131,7 +131,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€
     ],
     content: value,
     editorProps: {
-      attributes: { class: "prose-content tiptap min-h-[360px] px-5 py-4 text-gray-800", "aria-label": "Post content", role: "textbox", "aria-multiline": "true" },
+      attributes: { class: "prose-content tiptap min-h-[240px] px-5 py-4 text-gray-800", "aria-label": "Post content", role: "textbox", "aria-multiline": "true" },
     },
     onUpdate: ({ editor: e }) => onChange(e.isEmpty ? "" : e.getHTML()),
   });
