@@ -1,4 +1,7 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, Inbox, Loader2 } from "lucide-react";
 import { cn } from "./cn";
 
@@ -6,11 +9,12 @@ export function Spinner({ className }: { className?: string }) {
   return <Loader2 className={cn("h-5 w-5 animate-spin text-gray-400", className)} aria-hidden />;
 }
 
-export function LoadingState({ label = "Loading…", className }: { label?: string; className?: string }) {
+export function LoadingState({ label, className }: { label?: string; className?: string }) {
+  const { t } = useTranslation();
   return (
     <div className={cn("flex items-center justify-center gap-3 py-16 text-sm text-gray-500", className)} role="status" aria-live="polite">
       <Spinner />
-      {label}
+      {label ?? t("common.loading")}
     </div>
   );
 }
@@ -59,16 +63,17 @@ export function EmptyState({
 }
 
 export function ErrorState({ message, onRetry, className }: { message: string; onRetry?: () => void; className?: string }) {
+  const { t } = useTranslation();
   return (
     <div className={cn("flex flex-col items-center justify-center px-6 py-14 text-center", className)} role="alert">
       <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-red-50 text-red-600">
         <AlertTriangle className="h-5 w-5" aria-hidden />
       </div>
-      <p className="text-sm font-medium text-gray-900">Something went wrong</p>
+      <p className="text-sm font-medium text-gray-900">{t("common.somethingWentWrong")}</p>
       <p className="mt-1 max-w-sm text-sm text-gray-500">{message}</p>
       {onRetry && (
         <button type="button" onClick={onRetry} className="mt-4 text-sm font-medium text-indigo-600 hover:underline">
-          Try again
+          {t("common.tryAgain")}
         </button>
       )}
     </div>

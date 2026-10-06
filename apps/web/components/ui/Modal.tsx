@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle, X } from "lucide-react";
 import { Button, type ButtonVariant } from "./Button";
 import { cn } from "./cn";
@@ -30,6 +31,7 @@ export function Modal({
   size?: "sm" | "md" | "lg" | "xl";
   dismissible?: boolean;
 }) {
+  const { t } = useTranslation();
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const descId = useId();
@@ -108,7 +110,7 @@ export function Modal({
             )}
           </div>
           {dismissible && (
-            <button type="button" onClick={onClose} className="-mr-2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label="Close">
+            <button type="button" onClick={onClose} className="-me-2 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700" aria-label={t("common.close")}>
               <X className="h-4 w-4" />
             </button>
           )}
@@ -127,7 +129,7 @@ export function ConfirmDialog({
   onConfirm,
   title,
   description,
-  confirmLabel = "Confirm",
+  confirmLabel,
   tone = "danger",
   loading = false,
   confirmDisabled = false,
@@ -144,6 +146,7 @@ export function ConfirmDialog({
   confirmDisabled?: boolean;
   children?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const variant: ButtonVariant = tone === "danger" ? "danger" : "primary";
   return (
     <Modal
@@ -160,10 +163,10 @@ export function ConfirmDialog({
       footer={
         <>
           <Button onClick={onClose} disabled={loading}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button variant={variant} onClick={onConfirm} loading={loading} disabled={confirmDisabled}>
-            {confirmLabel}
+            {confirmLabel ?? t("common.confirm")}
           </Button>
         </>
       }

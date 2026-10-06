@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Response } from "express";
 import { z } from "zod";
+import { SUPPORTED_LOCALES } from "@insurance/shared";
 import { requireAuth } from "../../middleware/auth";
 import { parseDurationMs } from "../../lib/refreshToken";
 import { env } from "../../lib/env";
@@ -50,6 +51,7 @@ const registerSchema = z.object({
   password: newPasswordSchema,
   firstName: z.string().trim().min(1).max(100),
   lastName: z.string().trim().min(1).max(100),
+  locale: z.enum(SUPPORTED_LOCALES).optional(),
 });
 
 authRouter.post("/register", limiters.login, async (req, res, next) => {

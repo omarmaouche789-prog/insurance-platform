@@ -6,7 +6,7 @@ import { AgentNav } from "../../components/agent/AgentNav";
 export default function AgentLayout({ children }: { children: ReactNode }) {
   return (
     <RoleGuard role="AGENT">
-      <PortalHeader title="Agent Portal" />
+      <PortalHeader portal="agent" />
       <AgentNav />
       <main>{children}</main>
     </RoleGuard>

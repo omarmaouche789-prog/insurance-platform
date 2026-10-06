@@ -21,10 +21,10 @@ securityRouter.use(requireAuth);
 
 // Resolves :id to the caller; anyone else's id is a 403 — these endpoints
 // are never a way to act on another account.
-function selfOnly(req: Request, _res: Response, next: NextFunction): void {
+export function selfOnly(req: Request, _res: Response, next: NextFunction): void {
   const id = req.params.id;
   if (id !== "me" && id !== req.auth!.userId) {
-    next(new HttpError(403, "You can only manage your own security settings"));
+    next(new HttpError(403, "You can only manage your own account settings"));
     return;
   }
   next();

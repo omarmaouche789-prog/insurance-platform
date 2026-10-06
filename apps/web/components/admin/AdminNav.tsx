@@ -1,19 +1,25 @@
 "use client";
 
 import { BarChart3, Briefcase, FileCheck2, Mail, Newspaper, Settings, ShieldCheck, Users } from "lucide-react";
-import { PortalNav, type PortalLink } from "../PortalNav";
+import type { LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { Messages } from "../../lib/i18n/en";
+import { PortalNav } from "../PortalNav";
 
-const LINKS: PortalLink[] = [
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/applications/pending", label: "Applications", icon: FileCheck2, match: "/admin/applications" },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/agents", label: "Agents", icon: Briefcase },
-  { href: "/admin/cms", label: "Blog", icon: Newspaper },
-  { href: "/admin/notifications", label: "Notifications", icon: Mail },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
-  { href: "/admin/security", label: "Security", icon: ShieldCheck },
+type NavKey = Exclude<keyof Messages["adminNav"], "label">;
+
+const LINKS: { href: string; key: NavKey; icon: LucideIcon; match?: string }[] = [
+  { href: "/admin/analytics", key: "analytics", icon: BarChart3 },
+  { href: "/admin/applications/pending", key: "applications", icon: FileCheck2, match: "/admin/applications" },
+  { href: "/admin/users", key: "users", icon: Users },
+  { href: "/admin/agents", key: "agents", icon: Briefcase },
+  { href: "/admin/cms", key: "blog", icon: Newspaper },
+  { href: "/admin/notifications", key: "notifications", icon: Mail },
+  { href: "/admin/settings", key: "settings", icon: Settings },
+  { href: "/admin/security", key: "security", icon: ShieldCheck },
 ];
 
 export function AdminNav() {
-  return <PortalNav links={LINKS} label="Admin" />;
+  const { t } = useTranslation();
+  return <PortalNav links={LINKS.map(({ key, ...l }) => ({ ...l, label: t(`adminNav.${key}`) }))} label={t("adminNav.label")} />;
 }

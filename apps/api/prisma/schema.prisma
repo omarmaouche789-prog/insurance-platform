@@ -35,6 +35,8 @@ model User {
   // Mirrors two_factor_secrets.enabledAt so lists/filters don't need a join;
   // both are written together in modules/security/twoFactor.service.ts.
   twoFactorEnabled Boolean    @default(false)
+  // UI language ("en" | "ar"), see SUPPORTED_LOCALES in packages/shared.
+  locale           String     @default("en")
   // Suspension is reversible (isActive=false plus a reason). Deletion is a
   // soft delete that also anonymizes the row — see modules/admin/users.service.ts.
   suspendedAt      DateTime?

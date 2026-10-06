@@ -1,5 +1,7 @@
 import type { AdminRole, Role } from "./roles";
 
+import type { Locale } from "./locale";
+
 export interface AuthUserDTO {
   id: string;
   email: string;
@@ -8,6 +10,8 @@ export interface AuthUserDTO {
   role: Role;
   adminRole: AdminRole | null;
   twoFactorEnabled: boolean;
+  // Saved UI language; the web app switches to it on sign-in.
+  locale: Locale;
 }
 
 export interface RegisterRequestDTO {
@@ -15,6 +19,8 @@ export interface RegisterRequestDTO {
   password: string;
   firstName: string;
   lastName: string;
+  // The language the visitor was browsing in, saved as their preference.
+  locale?: Locale;
 }
 
 export interface LoginRequestDTO {

@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "react-i18next";
 
 export function ZipSearchForm({ initialZip = "" }: { initialZip?: string }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [zip, setZip] = useState(initialZip);
   const valid = /^\d{5}$/.test(zip);
 
@@ -17,12 +19,12 @@ export function ZipSearchForm({ initialZip = "" }: { initialZip?: string }) {
     <form onSubmit={handleSubmit} className="flex gap-2">
       <input
         className="w-40 rounded border border-gray-300 px-3 py-2"
-        placeholder="ZIP code"
+        placeholder={t("home.zipLabel")}
         inputMode="numeric"
         maxLength={5}
         value={zip}
         onChange={(e) => setZip(e.target.value.replace(/\D/g, ""))}
-        aria-label="ZIP code"
+        aria-label={t("home.zipLabel")}
         required
       />
       <button
@@ -30,7 +32,7 @@ export function ZipSearchForm({ initialZip = "" }: { initialZip?: string }) {
         disabled={!valid}
         className="rounded bg-gray-900 px-4 py-2 text-white disabled:opacity-50"
       >
-        Find plans
+        {t("home.findPlans")}
       </button>
     </form>
   );

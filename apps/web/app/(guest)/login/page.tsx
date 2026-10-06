@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { KeyRound, LogIn, ShieldCheck } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { portalPathForRole } from "@insurance/shared";
 import { useAuth } from "../../../lib/auth-context";
 import { ApiError } from "../../../lib/api";
@@ -16,6 +17,7 @@ import { Alert } from "../../../components/ui/States";
 
 export default function LoginPage() {
   const { login, completeTwoFactor } = useAuth();
+  const { t } = useTranslation();
   const next = useNextPath();
   const router = useRouter();
 
@@ -39,7 +41,7 @@ export default function LoginPage() {
         router.push(next ?? portalPathForRole(res.user.role));
       }
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong");
+      setError(err instanceof ApiError ? err.message : t("common.somethingWentWrong"));
     } finally {
       setSubmitting(false);
     }
@@ -53,7 +55,7 @@ export default function LoginPage() {
       const res = await completeTwoFactor(challengeToken, value);
       router.push(next ?? portalPathForRole(res.user.role));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Something went wrong");
+      setError(err instanceof ApiError ? err.message : t("common.somethingWentWrong"));
       setCode("");
       // The challenge only lives 5 minutes; send them back to the password step.
       if (err instanceof ApiError && err.status === 401 && /expired/i.test(err.message)) setChallengeToken(null);
@@ -66,15 +68,13 @@ export default function LoginPage() {
     return (
       <AuthCard
         icon={useBackup ? <KeyRound className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
-        title={useBackup ? "Use a backup code" : "Two-factor verification"}
+        title={useBackup ? t("auth.backupTitle") : t("auth.twoFactorTitle")}
         description={
-          useBackup
-            ? "Enter one of the backup codes you saved when you set up two-factor authentication. Each code works once."
-            : "Enter the 6-digit code from your authenticator app."
+          useBackup ? t("auth.backupDescription") : t("auth.twoFactorDescription")
         }
         footer={
           <button type="button" className="hover:text-gray-900" onClick={() => { setChallengeToken(null); setCode(""); setError(null); }}>
-            ← Back to sign in
+            {t("auth.backToSignIn")}
           </button>
         }
       >
@@ -86,7 +86,7 @@ export default function LoginPage() {
           className="space-y-5"
         >
           {useBackup ? (
-            <Field label="Backup code" htmlFor="backup-code">
+            <Field label={t("auth.backupCode")} htmlFor="backup-code">
               <Input
                 id="backup-code"
                 value={code}
@@ -104,7 +104,7 @@ export default function LoginPage() {
           )}
           {error && <Alert>{error}</Alert>}
           <Button type="submit" variant="primary" className="w-full" loading={submitting} disabled={useBackup ? code.length < 10 : code.length !== 6}>
-            Verify
+            {t("auth.verify")}
           </Button>
           <div className="text-center">
             <button
@@ -116,11 +116,11 @@ export default function LoginPage() {
                 setError(null);
               }}
             >
-              {useBackup ? "Use your authenticator app" : "Lost your phone? Use a backup code"}
+              {useBackup ? t("auth.useApp") : t("auth.useBackup")}
             </button>
           </div>
           {useBackup && (
-            <p className="text-center text-xs text-gray-500">No backup codes? Contact support — an administrator can reset two-factor authentication after verifying your identity.</p>
+            <p className="text-center text-xs text-gray-500">{t("auth.noBackupCodes")}</p>
           )}
         </form>
       </AuthCard>
@@ -130,27 +130,27 @@ export default function LoginPage() {
   return (
     <AuthCard
       icon={<LogIn className="h-5 w-5" />}
-      title="Welcome back"
-      description="Sign in to manage your plans and applications."
+      title={t("auth.loginTitle")}
+      description={t("auth.loginDescription")}
       footer={
         <>
-          No account yet?{" "}
+          {t("auth.noAccount")}{" "}
           <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="font-medium text-indigo-600 hover:underline">
-            Create one
+            {t("auth.createOne")}
           </Link>
         </>
       }
     >
       <form onSubmit={handleLogin} className="space-y-4">
-        <Field label="Email" htmlFor="email">
-          <Input id="email" type="text" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+        <Field label={t("auth.email")} htmlFor="email">
+          <Input id="email" dir="ltr" type="text" inputMode="email" autoCapitalize="none" spellCheck={false} autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
         </Field>
         <Field
           label={
             <span className="flex items-center justify-between">
-              Password
+              {t("auth.password")}
               <Link href="/forgot-password" className="text-xs font-medium text-indigo-600 hover:underline">
-                Forgot password?
+                {t("auth.forgotPassword")}
               </Link>
             </span>
           }
@@ -160,7 +160,7 @@ export default function LoginPage() {
         </Field>
         {error && <Alert>{error}</Alert>}
         <Button type="submit" variant="primary" className="w-full" loading={submitting}>
-          Sign in
+          {t("auth.signIn")}
         </Button>
       </form>
     </AuthCard>

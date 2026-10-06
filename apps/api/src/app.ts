@@ -15,6 +15,7 @@ import { adminCmsRouter, blogRouter } from "./modules/cms/cms.routes";
 import { notificationsRouter } from "./modules/notifications/notifications.routes";
 import { plansRouter } from "./modules/plans/plans.routes";
 import { securityRouter } from "./modules/security/security.routes";
+import { preferencesRouter } from "./modules/users/preferences.routes";
 import { maintenanceGate } from "./modules/settings/maintenance";
 import { adminSettingsRouter, statusRouter } from "./modules/settings/settings.routes";
 
@@ -39,6 +40,7 @@ export function createApp() {
 
   app.use("/api/auth", authRouter);
   app.use("/api/users", securityRouter);
+  app.use("/api/users", preferencesRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/plans", plansRouter);
   app.use("/api/blog", blogRouter);

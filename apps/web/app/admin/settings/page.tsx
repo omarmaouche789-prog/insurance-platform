@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Clock, Construction, Lock, Save, ToggleRight, Undo2 } from "lucide-react";
 import type { SystemSettingsDTO, SystemSettingsResponseDTO } from "@insurance/shared";
 import { canEditSystemSettings, SETTINGS_LIMITS, SYSTEM_SETTINGS_DEFAULTS } from "@insurance/shared";
@@ -81,6 +82,7 @@ function formatMinutes(n: number): string {
 
 export default function AdminSettingsPage() {
   const { user, accessToken } = useAuth();
+  const { t } = useTranslation();
   const toast = useToast();
   const canEdit = canEditSystemSettings(user?.adminRole ?? null);
   const query = useApiQuery<SystemSettingsResponseDTO>("/api/admin/settings", "Couldn't load system settings");
@@ -367,10 +369,10 @@ export default function AdminSettingsPage() {
                   setSaveError(null);
                 }}
               >
-                Discard
+                {t("common.discard")}
               </Button>
               <Button variant="primary" icon={<Save className="h-4 w-4" aria-hidden />} loading={saving} disabled={hasErrors} onClick={requestSave}>
-                Save changes
+                {t("common.saveChanges")}
               </Button>
             </div>
           </div>
@@ -475,9 +477,9 @@ function NumberField({
           invalid={Boolean(error)}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
-          className="pr-20"
+          className="pe-20"
         />
-        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-gray-400">{unit}</span>
+        <span className="pointer-events-none absolute inset-y-0 end-3 flex items-center text-sm text-gray-400">{unit}</span>
       </div>
       <p className="mt-1 text-xs text-gray-400">
         Allowed: {limits.min}–{limits.max}
