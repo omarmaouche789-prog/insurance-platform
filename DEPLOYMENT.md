@@ -48,6 +48,7 @@ With `NODE_ENV=production` the API **refuses to start** if any integration is un
 | `EMAIL_FROM_NAME` | no | Default `Insurance Marketplace`. |
 | `SMARTY_AUTH_ID`, `SMARTY_AUTH_TOKEN` | yes* | A SmartyStreets **secret** key pair (server-side). |
 | `CARRIER_<CODE>_API_URL`, `CARRIER_<CODE>_API_KEY` | yes* | One pair per carrier code (see below). Must be `https://`. |
+| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER` | no | SMS via Twilio (from number in E.164). Without them, SMS is only logged. Not required in production yet: nothing sends SMS automatically, only the admin test send. |
 | `ALLOW_MOCK_INTEGRATIONS` | staging only | `true` lets production builds run on the mocks. Never in real production. |
 | `REDIS_URL` | no | Not used by the code yet. |
 

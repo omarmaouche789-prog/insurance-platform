@@ -7,6 +7,7 @@ import { authRouter } from "./modules/auth/auth.routes";
 import { adminAgentsRouter } from "./modules/admin/agents.routes";
 import { adminAnalyticsRouter } from "./modules/admin/analytics.routes";
 import { adminApplicationsRouter } from "./modules/admin/review.routes";
+import { adminNotificationsRouter } from "./modules/admin/notifications.routes";
 import { adminUsersRouter } from "./modules/admin/users.routes";
 import { agentRouter } from "./modules/agent/agent.routes";
 import { applicationsRouter } from "./modules/applications/applications.routes";
@@ -42,6 +43,7 @@ export function createApp() {
   app.use("/api/admin/applications", adminApplicationsRouter);
   app.use("/api/admin/analytics", adminAnalyticsRouter);
   app.use("/api/admin/cms", adminCmsRouter);
+  app.use("/api/admin/notifications", adminNotificationsRouter);
 
   app.use(errorHandler);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, Briefcase, FileCheck2, Newspaper, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, Briefcase, FileCheck2, Mail, Newspaper, ShieldCheck, Users } from "lucide-react";
 import { PortalNav, type PortalLink } from "../PortalNav";
 
 const LINKS: PortalLink[] = [
@@ -9,6 +9,7 @@ const LINKS: PortalLink[] = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/agents", label: "Agents", icon: Briefcase },
   { href: "/admin/cms", label: "Blog", icon: Newspaper },
+  { href: "/admin/notifications", label: "Notifications", icon: Mail },
   { href: "/admin/security", label: "Security", icon: ShieldCheck },
 ];
 

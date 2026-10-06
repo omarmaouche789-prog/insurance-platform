@@ -88,6 +88,18 @@ export const env = {
       ? { authId: optional("SMARTY_AUTH_ID")!, authToken: optional("SMARTY_AUTH_TOKEN")! }
       : null,
 
+  // SMS via Twilio when all three are set; otherwise texts are only logged.
+  // Not required in production yet: nothing sends SMS automatically, only
+  // the admin test send.
+  twilio:
+    optional("TWILIO_ACCOUNT_SID") && optional("TWILIO_AUTH_TOKEN") && optional("TWILIO_FROM_NUMBER")
+      ? {
+          accountSid: optional("TWILIO_ACCOUNT_SID")!,
+          authToken: optional("TWILIO_AUTH_TOKEN")!,
+          from: optional("TWILIO_FROM_NUMBER")!,
+        }
+      : null,
+
   carriers: parseCarrierEndpoints(process.env),
 
   // Base URL of the web app, for links in emails.

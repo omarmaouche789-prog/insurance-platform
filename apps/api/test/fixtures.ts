@@ -51,6 +51,7 @@ export function makeDbMock() {
       update: vi.fn(),
       delete: vi.fn(),
     },
+    smsTemplate: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
     $queryRaw: vi.fn(),
     $transaction: vi.fn(),
   };

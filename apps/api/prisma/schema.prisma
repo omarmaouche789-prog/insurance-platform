@@ -63,6 +63,7 @@ model User {
   applicationNotes     ApplicationNote[]
   blogPosts            BlogPost[]
   completedDocRequests DocumentRequest[]    @relation("DocumentRequestCompleter")
+  SmsTemplate          SmsTemplate[]
 
   @@index([role, isActive])
   @@index([createdAt])
@@ -535,4 +536,20 @@ model BlogPost {
 
   @@index([status, publishedAt])
   @@map("blog_posts")
+}
+
+// ─── Notification templates ──────────────────────────────────────────────────
+
+// Admin edits to SMS templates. The template catalog and default wording
+// live in code (modules/admin/notificationTemplates.ts); a row exists only
+// once an admin has customized or switched off a template.
+model SmsTemplate {
+  key         String   @id
+  body        String
+  isActive    Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("sms_templates")
 }

@@ -44,6 +44,10 @@ Create agents (email, name, phone, license number, NPN, expiry, licensed states,
 
 Date-range presets or custom dates; user acquisition (weekly or monthly), application funnel with step conversion, approval rate by agent, revenue by carrier, a top-agents table, and **Export to Excel** (one sheet per panel, real numbers with currency formats).
 
+### Notification templates (`/admin/notifications`)
+
+Two tabs. **Email templates** previews every email the platform sends (rendered with sample data, HTML or plain text); the wording lives in code. **SMS templates** lists the text messages (welcome, document request, submitted, approved, not approved, status update) with an editor: insert `{userName}`, `{appId}` or `{status}`, see a live phone preview with character, segment and encoding counts, switch a template on or off, save, reset to the default, and send a test to any number. Tests go through Twilio when `TWILIO_*` is configured and are written to the API log otherwise. SMS templates aren't sent automatically by any workflow yet.
+
 ### Blog CMS (`/admin/cms`)
 
 Rich-text editor (headings, lists, quotes, links, images, code), draft / publish / schedule workflow (a future publish date schedules the post), preview exactly as readers will see it, featured image upload, SEO title and description with a live search-result preview, and a status-filtered post list. HTML is sanitized on the server.
@@ -126,6 +130,7 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `GET /api/notifications` · `POST /:id/read` · `POST /read-all` | signed in | In-app notifications |
 | `GET /api/admin/analytics/{users,approvals,revenue,funnel,export}` | admin | Analytics; `from`/`to` (YYYY-MM-DD), `interval=week\|month` |
 | `GET/POST /api/admin/cms/posts` · `GET/PUT/DELETE /:id` · `POST/DELETE /:id/image` | admin / SUPER·OPS | Blog CMS |
+| `GET /api/admin/notifications/email/templates` · `GET /sms/templates` · `PUT /sms/templates/:key` · `POST /sms/templates/:key/reset` · `POST /sms/send` | admin / SUPER·OPS | Notification templates and SMS test send |
 | `GET /api/blog/posts` · `GET /posts/:slug` · `GET /images/:id` | public | Published posts |
 
 Errors are JSON `{ "error": "…" }` with the usual status codes: 400 validation (with `details.fieldErrors`), 401, 403, 404, 409 conflict/state, 429 rate limited (with `Retry-After`).
