@@ -4,7 +4,9 @@ import { FileText, Search, ShieldCheck } from "lucide-react";
 import { PortalNav, type PortalLink } from "../PortalNav";
 
 const LINKS: PortalLink[] = [
-  { href: "/account", label: "My applications", icon: FileText, exact: true, match: "/account" },
+  // Prefix match, so it stays active on /account/applications/:id and the
+  // enrollment wizard; the more specific Security link wins on its own page.
+  { href: "/account", label: "My applications", icon: FileText },
   { href: "/plans", label: "Find plans", icon: Search },
   { href: "/account/security", label: "Security", icon: ShieldCheck },
 ];

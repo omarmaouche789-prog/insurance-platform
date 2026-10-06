@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LogOut, ShieldCheck, ShieldPlus } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, ShieldCheck, ShieldPlus } from "lucide-react";
 import { portalPathForRole } from "@insurance/shared";
 import { useAuth } from "../lib/auth-context";
 import { Avatar } from "./ui/Avatar";
@@ -21,7 +21,10 @@ export function BrandMark() {
   );
 }
 
-export function PortalHeader({ title }: { title: string }) {
+// Avatar dropdown (security settings, log out). Shared by the portal header
+// and the public site header, so a signed-in user has the same menu on
+// every page.
+export function UserMenu() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -39,11 +42,57 @@ export function PortalHeader({ title }: { title: string }) {
     };
   }, [menuOpen]);
 
+  if (!user) return null;
+  const home = portalPathForRole(user.role);
+
   async function handleLogout() {
     await logout();
     router.push("/login");
   }
 
+  return (
+    <div className="relative ml-1" ref={menu}>
+      <button
+        type="button"
+        onClick={() => setMenuOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-lg p-1 pr-2 transition-colors hover:bg-gray-100"
+        aria-expanded={menuOpen}
+        aria-haspopup="true"
+        aria-label="Account menu"
+      >
+        <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
+        <span className="hidden text-sm font-medium text-gray-700 md:inline">{user.firstName}</span>
+        <ChevronDown className="h-3.5 w-3.5 text-gray-400" aria-hidden />
+      </button>
+      {menuOpen && (
+        <div className="absolute right-0 z-40 mt-2 w-64 animate-pop-in overflow-hidden rounded-xl border border-gray-200 bg-white shadow-overlay">
+          <div className="border-b border-gray-100 px-4 py-3">
+            <p className="truncate text-sm font-medium text-gray-900">
+              {user.firstName} {user.lastName}
+            </p>
+            <p className="truncate text-xs text-gray-500">{user.email}</p>
+          </div>
+          <Link href={home} onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <LayoutDashboard className="h-4 w-4 text-gray-400" aria-hidden />
+            {user.role === "USER" ? "My account" : user.role === "AGENT" ? "Agent portal" : "Admin portal"}
+          </Link>
+          <Link href={`${home}/security`} onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <ShieldCheck className="h-4 w-4 text-gray-400" aria-hidden />
+            Security
+            {!user.twoFactorEnabled && <span className="ml-auto rounded-full bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-800">2FA off</span>}
+          </Link>
+          <button type="button" onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
+            <LogOut className="h-4 w-4 text-gray-400" aria-hidden />
+            Log out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function PortalHeader({ title }: { title: string }) {
+  const { user } = useAuth();
   const home = user ? portalPathForRole(user.role) : "/";
   return (
     <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/90 backdrop-blur">
@@ -58,45 +107,7 @@ export function PortalHeader({ title }: { title: string }) {
         <div className="flex items-center gap-1">
           <ThemeToggle />
           {user && <NotificationBell />}
-          {user && (
-            <div className="relative ml-1" ref={menu}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-lg p-1 pr-2 transition-colors hover:bg-gray-100"
-                aria-expanded={menuOpen}
-                aria-haspopup="true"
-                aria-label="Account menu"
-              >
-                <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
-                <span className="hidden text-sm font-medium text-gray-700 md:inline">{user.firstName}</span>
-                <ChevronDown className="h-3.5 w-3.5 text-gray-400" aria-hidden />
-              </button>
-              {menuOpen && (
-                <div className="absolute right-0 z-40 mt-2 w-64 animate-pop-in overflow-hidden rounded-xl border border-gray-200 bg-white shadow-overlay">
-                  <div className="border-b border-gray-100 px-4 py-3">
-                    <p className="truncate text-sm font-medium text-gray-900">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="truncate text-xs text-gray-500">{user.email}</p>
-                  </div>
-                  <Link
-                    href={`${home}/security`}
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
-                  >
-                    <ShieldCheck className="h-4 w-4 text-gray-400" aria-hidden />
-                    Security
-                    {!user.twoFactorEnabled && <span className="ml-auto rounded-full bg-amber-100 px-1.5 text-[10px] font-semibold text-amber-800">2FA off</span>}
-                  </Link>
-                  <button type="button" onClick={handleLogout} className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50">
-                    <LogOut className="h-4 w-4 text-gray-400" aria-hidden />
-                    Log out
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+          <UserMenu />
         </div>
       </div>
     </header>
