@@ -11,4 +11,3 @@ export * from "./analytics";
 export * from "./cms";
 export * from "./notifications";
 export * from "./settings";
-export * from "./locale";

@@ -6,7 +6,7 @@ import { AccountNav } from "../../components/account/AccountNav";
 export default function AccountLayout({ children }: { children: ReactNode }) {
   return (
     <RoleGuard role="USER">
-      <PortalHeader portal="account" />
+      <PortalHeader title="My Account" />
       <AccountNav />
       <main>{children}</main>
     </RoleGuard>

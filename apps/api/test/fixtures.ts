@@ -163,7 +163,6 @@ export function makeUser(overrides: Record<string, unknown> = {}) {
     isActive: true,
     emailVerifiedAt: null,
     twoFactorEnabled: false,
-    locale: "en",
     suspendedAt: null,
     suspensionReason: null,
     deletedAt: null,

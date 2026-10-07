@@ -4,11 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UserPlus } from "lucide-react";
-import { useTranslation } from "react-i18next";
 import { portalPathForRole } from "@insurance/shared";
 import { useAuth } from "../../../lib/auth-context";
 import { ApiError } from "../../../lib/api";
-import { useLocale } from "../../../lib/i18n/LocaleProvider";
 import { useNextPath } from "../../../lib/next-path";
 import { AuthCard } from "../../../components/auth/AuthCard";
 import { PasswordStrength, passwordChecks } from "../../../components/auth/PasswordStrength";
@@ -18,8 +16,6 @@ import { Alert } from "../../../components/ui/States";
 
 export default function RegisterPage() {
   const { register } = useAuth();
-  const { t } = useTranslation();
-  const { locale } = useLocale();
   const next = useNextPath();
   const router = useRouter();
 
@@ -37,11 +33,10 @@ export default function RegisterPage() {
     setError(null);
     setSubmitting(true);
     try {
-      // The language they were browsing in becomes their saved preference.
-      const res = await register({ ...form, locale });
+      const res = await register(form);
       router.push(next ?? portalPathForRole(res.user.role));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : t("common.somethingWentWrong"));
+      setError(err instanceof ApiError ? err.message : "Something went wrong");
     } finally {
       setSubmitting(false);
     }
@@ -50,36 +45,36 @@ export default function RegisterPage() {
   return (
     <AuthCard
       icon={<UserPlus className="h-5 w-5" />}
-      title={t("auth.registerTitle")}
-      description={t("auth.registerDescription")}
+      title="Create your account"
+      description="Save plans and track your applications in one place."
       footer={
         <>
-          {t("auth.haveAccount")}{" "}
+          Already have an account?{" "}
           <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="font-medium text-indigo-600 hover:underline">
-            {t("auth.logIn")}
+            Log in
           </Link>
         </>
       }
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <Field label={t("auth.firstName")} htmlFor="firstName">
+          <Field label="First name" htmlFor="firstName">
             <Input id="firstName" autoComplete="given-name" value={form.firstName} onChange={update("firstName")} required autoFocus />
           </Field>
-          <Field label={t("auth.lastName")} htmlFor="lastName">
+          <Field label="Last name" htmlFor="lastName">
             <Input id="lastName" autoComplete="family-name" value={form.lastName} onChange={update("lastName")} required />
           </Field>
         </div>
-        <Field label={t("auth.email")} htmlFor="email">
-          <Input id="email" type="email" autoComplete="email" dir="ltr" value={form.email} onChange={update("email")} required />
+        <Field label="Email" htmlFor="email">
+          <Input id="email" type="email" autoComplete="email" value={form.email} onChange={update("email")} required />
         </Field>
-        <Field label={t("auth.password")} htmlFor="password">
+        <Field label="Password" htmlFor="password">
           <Input id="password" type="password" autoComplete="new-password" value={form.password} onChange={update("password")} required />
           <PasswordStrength password={form.password} />
         </Field>
         {error && <Alert>{error}</Alert>}
         <Button type="submit" variant="primary" className="w-full" loading={submitting} disabled={!passwordOk}>
-          {t("auth.createAccount")}
+          Create account
         </Button>
       </form>
     </AuthCard>

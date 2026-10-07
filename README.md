@@ -57,12 +57,6 @@ Every admin can view; only SUPER admins can change. Saved in the `system_setting
 - **Maintenance mode.** When on, the API answers every non-admin request with `503` (`code: "MAINTENANCE"`, `Retry-After`). The web app shows the admin's message full-screen to everyone but admins, and admins see a banner instead. Sign-in, password reset, `/api/health` and `/api/status` stay open, so an admin can always get in and turn it off. Turning it on asks for confirmation.
 - **Sessions.** *Session timeout* (default 30 minutes, 5–1440) is an idle timeout: a session that hasn't been refreshed for that long has to sign in again. *Max login attempts* (default 5, 3–20) is how many wrong passwords or 2FA codes an account gets in 15 minutes before it's locked for the rest of that window.
 
-### Languages (English / العربية)
-
-A language picker sits in the top bar next to the account menu, on every page. Switching is instant (all strings are bundled with [react-i18next](https://react.i18next.com/)) and Arabic flips the layout to right-to-left. The choice is saved in `localStorage` for every visitor and, when signed in, on the account (`users.locale`), so it follows the user to other devices. On sign-in, the account's saved language wins. A visitor who registers keeps the language they were browsing in.
-
-Translated so far: the header and account menu, the home page heading, the login, 2FA and registration screens, the admin navigation, the maintenance screen and the shared buttons and states (Save, Cancel, Confirm, Close, Discard, Loading, Try again). Page content, API error messages and emails are still English. Strings live in `apps/web/lib/i18n/en.ts` and `ar.ts`; `ar.ts` is type-checked against `en.ts`, so a missing key fails the build.
-
 ### Blog CMS (`/admin/cms`)
 
 Rich-text editor (headings, lists, quotes, links, images, code), draft / publish / schedule workflow (a future publish date schedules the post), preview exactly as readers will see it, featured image upload, SEO title and description with a live search-result preview, and a status-filtered post list. HTML is sanitized on the server.
@@ -120,7 +114,6 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `document_requests` | + `status` (OPEN/FULFILLED/COMPLETED/CANCELLED, backfilled), `completedAt`, `completedById` |
 | `follow_ups`, `application_notes`, `notifications` | new — agent tooling and in-app notifications |
 | `system_settings` | new — one JSON row per section (`features`, `maintenance`, `session`), with who changed it last; missing rows fall back to defaults |
-| `users` | + `locale` (`en` / `ar`, default `en`) |
 | `blog_posts` | new — title, slug, content, status, `publishedAt`, author, featured image, SEO fields |
 | `commissions` | + `paidAt` |
 
@@ -149,7 +142,6 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `GET/POST /api/admin/cms/posts` · `GET/PUT/DELETE /:id` · `POST/DELETE /:id/image` | admin / SUPER·OPS | Blog CMS |
 | `GET /api/admin/notifications/email/templates` · `GET /sms/templates` · `PUT /sms/templates/:key` · `POST /sms/templates/:key/reset` · `POST /sms/send` | admin / SUPER·OPS | Notification templates and SMS test send |
 | `GET /api/admin/settings` · `POST /api/admin/settings` | admin / SUPER | System settings (POST takes the full settings object) |
-| `PUT /api/users/:id/preferences` | self | Save UI language `{ "locale": "en" \| "ar" }` |
 | `GET /api/status` | public | Maintenance status for the web app's maintenance screen |
 | `GET /api/blog/posts` · `GET /posts/:slug` · `GET /images/:id` | public | Published posts |
 

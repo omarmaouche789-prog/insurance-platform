@@ -1,7 +1,6 @@
 import type { Request } from "express";
 import type { LoginMethod, User } from "@prisma/client";
 import type { AuthUserDTO, LoginRequestDTO, RegisterRequestDTO } from "@insurance/shared";
-import { DEFAULT_LOCALE, isLocale } from "@insurance/shared";
 import { isTotpCode } from "@insurance/shared";
 import { prisma } from "../../lib/prisma";
 import { signAccessToken, signChallengeToken, verifyChallengeToken } from "../../lib/jwt";
@@ -23,7 +22,6 @@ export function toAuthUserDTO(user: User & { twoFactorSecret?: { enabledAt: Date
     role: user.role,
     adminRole: user.adminRole,
     twoFactorEnabled: user.twoFactorEnabled || Boolean(user.twoFactorSecret?.enabledAt),
-    locale: isLocale(user.locale) ? user.locale : DEFAULT_LOCALE,
   };
 }
 
@@ -63,7 +61,6 @@ export async function registerUser(input: RegisterRequestDTO, req: Request) {
       firstName: input.firstName,
       lastName: input.lastName,
       role: "USER",
-      locale: input.locale ?? DEFAULT_LOCALE,
     },
   });
 

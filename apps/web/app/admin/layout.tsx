@@ -6,7 +6,7 @@ import { AdminNav } from "../../components/admin/AdminNav";
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <RoleGuard role="ADMIN">
-      <PortalHeader portal="admin" />
+      <PortalHeader title="Admin" />
       <AdminNav />
       <main>{children}</main>
     </RoleGuard>

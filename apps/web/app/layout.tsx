@@ -5,8 +5,6 @@ import { AuthProvider } from "../lib/auth-context";
 import { THEME_INIT_SCRIPT } from "../lib/theme";
 import { ToastProvider } from "../components/ui/Toast";
 import { MaintenanceGate } from "../components/MaintenanceGate";
-import { LOCALE_INIT_SCRIPT } from "../lib/i18n/locale";
-import { LocaleProvider } from "../lib/i18n/LocaleProvider";
 
 export const metadata: Metadata = {
   // Resolves relative Open Graph image URLs (blog featured images).
@@ -24,20 +22,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    // The theme and language scripts set the "dark" class and lang/dir
-    // before hydration, so the server-rendered attributes intentionally differ.
+    // The theme script sets the "dark" class before hydration, so the
+    // server-rendered className intentionally differs.
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
-        <script dangerouslySetInnerHTML={{ __html: LOCALE_INIT_SCRIPT }} />
       </head>
       <body className="min-h-screen bg-gray-50 font-sans text-gray-900">
         <AuthProvider>
-          <LocaleProvider>
-            <ToastProvider>
-              <MaintenanceGate>{children}</MaintenanceGate>
-            </ToastProvider>
-          </LocaleProvider>
+          <ToastProvider>
+            <MaintenanceGate>{children}</MaintenanceGate>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>
