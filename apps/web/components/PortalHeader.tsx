@@ -13,7 +13,7 @@ import { ThemeToggle } from "./ThemeToggle";
 export function BrandMark() {
   return (
     <span className="inline-flex items-center gap-2 font-semibold tracking-tight text-gray-900">
-      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600 text-onaccent">
+      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-navy text-onaccent">
         <ShieldPlus className="h-4 w-4" aria-hidden />
       </span>
       <span className="hidden sm:inline">Insurance Marketplace</span>

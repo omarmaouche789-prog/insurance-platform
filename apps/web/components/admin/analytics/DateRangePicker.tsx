@@ -31,7 +31,7 @@ export function DateRangePicker({ value, onChange }: { value: DateRange; onChang
     return r.from === value.from && r.to === value.to;
   });
   const input =
-    "rounded-md border-0 bg-transparent px-1 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/40";
+    "rounded-md border-0 bg-transparent px-1 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-navy/40";
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="flex rounded-lg bg-gray-100 p-1" role="group" aria-label="Date range presets">

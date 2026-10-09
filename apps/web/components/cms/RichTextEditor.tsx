@@ -42,7 +42,7 @@ function ToolbarButton({ label, active, disabled, onClick, children }: { label: 
       onClick={onClick}
       className={cn(
         "inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:opacity-40",
-        active ? "bg-indigo-100 text-indigo-700" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+        active ? "bg-blue-100 text-primary-navy" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
       )}
     >
       {children}
@@ -164,7 +164,7 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-300 bg-white shadow-sm focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20">
+    <div className="overflow-hidden rounded-xl border border-gray-300 bg-white shadow-sm focus-within:border-primary-navy focus-within:ring-2 focus-within:ring-primary-navy/20">
       {editor ? <Toolbar editor={editor} onLink={() => openDialog("link")} onImage={() => openDialog("image")} /> : <div className="h-11 border-b border-gray-200" />}
       <EditorContent editor={editor} />
       <Modal

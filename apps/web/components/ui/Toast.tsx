@@ -53,7 +53,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const icons = {
     success: <CheckCircle2 className="h-5 w-5 text-green-600" aria-hidden />,
     error: <AlertCircle className="h-5 w-5 text-red-600" aria-hidden />,
-    info: <Info className="h-5 w-5 text-indigo-600" aria-hidden />,
+    info: <Info className="h-5 w-5 text-primary-navy" aria-hidden />,
   };
 
   return (
@@ -81,7 +81,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
                     t.action!.onClick();
                     dismiss(t.id);
                   }}
-                  className="mt-2 text-sm font-medium text-indigo-600 hover:underline"
+                  className="mt-2 text-sm font-medium text-primary-navy hover:underline"
                 >
                   {t.action.label}
                 </button>

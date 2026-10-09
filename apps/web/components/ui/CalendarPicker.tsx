@@ -70,7 +70,7 @@ export function CalendarPicker({ value, onChange, maxDays = 365 }: { value: Date
               onChange(d);
               setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
             }}
-            className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:border-indigo-400 hover:text-indigo-700"
+            className="rounded-full border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 hover:border-primary-navy hover:text-primary-navy"
           >
             {q.label}
           </button>
@@ -112,9 +112,9 @@ export function CalendarPicker({ value, onChange, maxDays = 365 }: { value: Date
                   onClick={() => pick(d)}
                   className={cn(
                     "h-9 rounded-lg text-sm tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-30",
-                    selected ? "bg-indigo-600 font-semibold text-onaccent" : "hover:bg-gray-100",
+                    selected ? "bg-primary-navy font-semibold text-onaccent" : "hover:bg-gray-100",
                     outside && !selected && "text-gray-400",
-                    isToday && !selected && "font-semibold text-indigo-600 ring-1 ring-inset ring-indigo-300",
+                    isToday && !selected && "font-semibold text-primary-navy ring-1 ring-inset ring-primary-navy/20",
                   )}
                 >
                   {d.getDate()}
@@ -141,7 +141,7 @@ export function CalendarPicker({ value, onChange, maxDays = 365 }: { value: Date
                   onClick={() => pick(day, s.h, s.m)}
                   className={cn(
                     "rounded-md px-2 py-1.5 text-xs tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-30",
-                    selected ? "bg-indigo-600 font-semibold text-onaccent" : "bg-gray-50 text-gray-700 hover:bg-gray-100",
+                    selected ? "bg-primary-navy font-semibold text-onaccent" : "bg-gray-50 text-gray-700 hover:bg-gray-100",
                   )}
                 >
                   {slotLabel(s.h, s.m)}

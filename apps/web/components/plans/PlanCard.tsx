@@ -37,7 +37,7 @@ export function PlanCard({ plan, chosen, onChoose, onShowDetails, compared, comp
       className={cn(
         "group relative cursor-pointer select-none rounded-xl border bg-white p-5 transition-all duration-150",
         chosen
-          ? "border-indigo-600 bg-indigo-50 shadow-md ring-2 ring-indigo-600/20"
+          ? "border-primary-navy bg-blue-50 shadow-md ring-2 ring-primary-navy/20"
           : "border-gray-200 shadow-card hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-md",
       )}
       aria-labelledby={`${radioId}-name`}
@@ -58,8 +58,8 @@ export function PlanCard({ plan, chosen, onChoose, onShowDetails, compared, comp
             htmlFor={radioId}
             aria-hidden
             className={cn(
-              "mt-0.5 flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500 peer-focus-visible:ring-offset-2",
-              chosen ? "border-indigo-600 bg-indigo-600 text-onaccent" : "border-gray-300 bg-white group-hover:border-gray-400",
+              "mt-0.5 flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded-full border-2 transition-colors peer-focus-visible:ring-2 peer-focus-visible:ring-primary-navy peer-focus-visible:ring-offset-2",
+              chosen ? "border-primary-navy bg-primary-navy text-onaccent" : "border-gray-300 bg-white group-hover:border-gray-400",
             )}
           >
             {chosen && <Check className="h-3 w-3" strokeWidth={3} />}
@@ -104,7 +104,7 @@ export function PlanCard({ plan, chosen, onChoose, onShowDetails, compared, comp
             checked={compared}
             disabled={compareDisabled && !compared}
             onChange={() => onToggleCompare(plan.id)}
-            className="h-4 w-4 rounded border-gray-300 accent-indigo-600"
+            className="h-4 w-4 rounded border-gray-300 accent-primary-navy"
           />
           Compare
         </label>

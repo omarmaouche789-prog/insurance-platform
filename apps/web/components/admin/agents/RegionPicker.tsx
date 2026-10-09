@@ -17,12 +17,12 @@ export function RegionPicker({ value, onChange, invalid }: { value: string[]; on
           onChange={(e) => setFilter(e.target.value)}
           placeholder="Filter states"
           aria-label="Filter states"
-          className="w-28 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs focus:border-indigo-500 focus:outline-none"
+          className="w-28 rounded-md border border-gray-200 bg-white px-2 py-1 text-xs focus:border-primary-navy focus:outline-none"
         />
         <span className="text-xs text-gray-500">
           {value.length} selected
           {value.length > 0 && (
-            <button type="button" className="ml-2 font-medium text-indigo-600 hover:underline" onClick={() => onChange([])}>
+            <button type="button" className="ml-2 font-medium text-primary-navy hover:underline" onClick={() => onChange([])}>
               Clear
             </button>
           )}
@@ -39,7 +39,7 @@ export function RegionPicker({ value, onChange, invalid }: { value: string[]; on
               onClick={() => toggle(s)}
               className={cn(
                 "rounded-md py-1 text-xs font-medium transition-colors",
-                on ? "bg-indigo-600 text-onaccent" : "bg-gray-100 text-gray-600 hover:bg-gray-200",
+                on ? "bg-primary-navy text-onaccent" : "bg-gray-100 text-gray-600 hover:bg-gray-200",
               )}
             >
               {s}

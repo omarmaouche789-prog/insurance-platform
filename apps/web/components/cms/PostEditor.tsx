@@ -103,7 +103,7 @@ function AutoGrowTextarea({
       placeholder={placeholder}
       disabled={disabled}
       aria-invalid={invalid || undefined}
-      className={`block w-full resize-none overflow-hidden break-words rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 disabled:bg-gray-50 ${className}`}
+      className={`block w-full resize-none overflow-hidden break-words rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 shadow-sm placeholder:text-gray-400 focus:border-primary-navy focus:outline-none focus:ring-2 focus:ring-primary-navy/30 disabled:bg-gray-50 ${className}`}
     />
   );
 }
@@ -302,7 +302,7 @@ export function PostEditor({ initial }: { initial: BlogPostDTO | null }) {
                   }}
                   disabled={!canEdit}
                   placeholder="post-url"
-                  className="min-w-[10rem] flex-1 rounded-md border border-transparent bg-gray-50 px-2 py-1 font-mono text-sm text-gray-700 hover:border-gray-200 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                  className="min-w-[10rem] flex-1 rounded-md border border-transparent bg-gray-50 px-2 py-1 font-mono text-sm text-gray-700 hover:border-gray-200 focus:border-primary-navy focus:bg-white focus:outline-none"
                 />
               </div>
               {fieldErrors.slug && <p className="mt-1 text-xs text-red-600">{fieldErrors.slug}</p>}
@@ -403,7 +403,7 @@ export function PostEditor({ initial }: { initial: BlogPostDTO | null }) {
                 type="button"
                 disabled={disabled}
                 onClick={() => fileInput.current?.click()}
-                className="flex w-full items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 px-3 py-4 text-sm text-gray-500 transition-colors hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-3 rounded-lg border-2 border-dashed border-gray-300 px-3 py-4 text-sm text-gray-500 transition-colors hover:border-primary-navy hover:text-primary-navy disabled:opacity-50"
               >
                 <ImagePlus className="h-6 w-6 shrink-0" aria-hidden />
                 <span className="text-left">
@@ -435,7 +435,7 @@ export function PostEditor({ initial }: { initial: BlogPostDTO | null }) {
           <CardBody className="space-y-4">
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3" aria-label="Search result preview">
               <p className="truncate text-xs text-gray-500">{origin}/blog/{effectiveSlug || "post-url"}</p>
-              <p className="mt-0.5 line-clamp-1 text-base text-indigo-700">{seoTitle}</p>
+              <p className="mt-0.5 line-clamp-1 text-base text-primary-navy">{seoTitle}</p>
               <p className="mt-0.5 line-clamp-2 text-xs text-gray-600">{seoDescription}</p>
             </div>
             <Field label={<span className="flex justify-between">Meta title <CharCount value={draft.seoTitle} max={SEO_TITLE_MAX} /></span>} htmlFor="post-seo-title" hint="Defaults to the post title." error={fieldErrors.seoTitle}>

@@ -113,7 +113,7 @@ export function NotificationBell() {
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
             <p className="text-sm font-semibold">Notifications</p>
             {unread > 0 && (
-              <button type="button" onClick={markAll} className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline">
+              <button type="button" onClick={markAll} className="inline-flex items-center gap-1 text-xs font-medium text-primary-navy hover:underline">
                 <CheckCheck className="h-3.5 w-3.5" aria-hidden /> Mark all read
               </button>
             )}
@@ -127,9 +127,9 @@ export function NotificationBell() {
                   <button
                     type="button"
                     onClick={() => openNotification(n)}
-                    className={cn("flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50", !n.readAt && "bg-indigo-50/40")}
+                    className={cn("flex w-full gap-3 px-4 py-3 text-left transition-colors hover:bg-gray-50", !n.readAt && "bg-blue-50/40")}
                   >
-                    <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", n.readAt ? "bg-transparent" : "bg-indigo-600")} aria-hidden />
+                    <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", n.readAt ? "bg-transparent" : "bg-primary-navy")} aria-hidden />
                     <span className="min-w-0">
                       <span className="block text-sm font-medium text-gray-900">{n.title}</span>
                       {n.body && <span className="mt-0.5 block text-sm text-gray-500">{n.body}</span>}

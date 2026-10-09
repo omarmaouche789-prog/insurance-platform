@@ -94,7 +94,7 @@ export function DocumentRequestsPanel({ app, onChange }: { app: AgentApplication
                       onClick={() => setTypes((l) => (on ? l.filter((x) => x !== t) : [...l, t]))}
                       className={cn(
                         "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                        on ? "border-indigo-600 bg-indigo-600 text-onaccent" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400",
+                        on ? "border-primary-navy bg-primary-navy text-onaccent" : "border-gray-300 bg-white text-gray-700 hover:border-gray-400",
                       )}
                     >
                       {DOCUMENT_TYPE_LABELS[t]}
@@ -114,7 +114,7 @@ export function DocumentRequestsPanel({ app, onChange }: { app: AgentApplication
               <div className="flex flex-wrap gap-1.5">
                 <span className="text-xs text-gray-500">Templates:</span>
                 {TEMPLATES.map((tpl) => (
-                  <button key={tpl.label} type="button" className="text-xs font-medium text-indigo-600 hover:underline" onClick={() => { setTypes(tpl.types); setMessage(tpl.message); }}>
+                  <button key={tpl.label} type="button" className="text-xs font-medium text-primary-navy hover:underline" onClick={() => { setTypes(tpl.types); setMessage(tpl.message); }}>
                     {tpl.label}
                   </button>
                 ))}

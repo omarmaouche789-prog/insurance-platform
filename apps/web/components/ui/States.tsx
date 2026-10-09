@@ -67,7 +67,7 @@ export function ErrorState({ message, onRetry, className }: { message: string; o
       <p className="text-sm font-medium text-gray-900">Something went wrong</p>
       <p className="mt-1 max-w-sm text-sm text-gray-500">{message}</p>
       {onRetry && (
-        <button type="button" onClick={onRetry} className="mt-4 text-sm font-medium text-indigo-600 hover:underline">
+        <button type="button" onClick={onRetry} className="mt-4 text-sm font-medium text-primary-navy hover:underline">
           Try again
         </button>
       )}
@@ -80,7 +80,7 @@ export function Alert({ tone = "red", children }: { tone?: "red" | "amber" | "gr
     red: "border-red-200 bg-red-50 text-red-800",
     amber: "border-amber-300 bg-amber-50 text-amber-900",
     green: "border-green-200 bg-green-50 text-green-800",
-    blue: "border-indigo-200 bg-indigo-50 text-indigo-900",
+    blue: "border-blue-200 bg-blue-50 text-blue-900",
   };
   return (
     <div className={cn("rounded-lg border px-4 py-3 text-sm", tones[tone])} role={tone === "red" ? "alert" : "status"}>
