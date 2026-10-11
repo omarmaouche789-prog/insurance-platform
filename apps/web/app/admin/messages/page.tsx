@@ -50,24 +50,31 @@ export default function AdminMessagesPage() {
   useEffect(() => {
     async function loadAgents() {
       try {
+        console.log("Loading agents with token:", !!accessToken);
         const response = await fetch("/api/admin/agents", {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
         });
+
         if (response.ok) {
           const data = await response.json();
+          console.log("Agents loaded:", data);
           // Transform agent data to match our interface
           const agentList = data.agents.map((agent: any) => ({
             id: agent.id,
             name: `${agent.firstName} ${agent.lastName}`,
           }));
+          console.log("Transformed agents:", agentList);
           setAgents(agentList);
         } else {
-          console.error("Failed to load agents:", response.statusText);
+          const errorText = await response.text();
+          console.error("Failed to load agents. Status:", response.status, "Response:", errorText);
+          toast.error(`Failed to load agents: ${response.status}`);
         }
       } catch (err) {
         console.error("Failed to load agents:", err);
+        toast.error("Error loading agents");
       } finally {
         setLoadingAgents(false);
       }
@@ -75,8 +82,11 @@ export default function AdminMessagesPage() {
 
     if (accessToken) {
       loadAgents();
+    } else {
+      console.warn("No accessToken available");
+      setLoadingAgents(false);
     }
-  }, [accessToken]);
+  }, [accessToken, toast]);
 
   // Load messages from localStorage
   useEffect(() => {
