@@ -19,7 +19,8 @@ export const NOTIFICATIONS_CHANGED = "notifications:changed";
 // holding a socket open, which works across any number of API instances and
 // through the Next.js /api proxy. New arrivals since the last poll pop a toast,
 // which is the "live" alert agents get when an applicant uploads a document.
-export function NotificationBell() {
+// onDark: light icon for the navy public header.
+export function NotificationBell({ onDark = false }: { onDark?: boolean }) {
   const { accessToken, user } = useAuth();
   const router = useRouter();
   const toast = useToast();
@@ -103,7 +104,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+        className={cn("relative inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors", onDark ? "text-[#cbd5e1] hover:bg-[#ffffff1a] hover:text-[#ffffff]" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900")}
         aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
         aria-expanded={open}
         aria-haspopup="true"

@@ -22,7 +22,7 @@ const config: Config = {
         // Primary navy blue color for the insurance platform
         "primary-navy": "#1e3a5f",
         // Orange/amber for CTAs and secondary actions
-        "primary-orange": "#f59e0b",
+        "primary-orange": "#ff6b35",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],

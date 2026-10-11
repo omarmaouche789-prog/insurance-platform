@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, LayoutDashboard, LogOut, ShieldCheck, ShieldPlus } from "lucide-react";
+import { ChevronDown, LayoutDashboard, LogOut, Menu, ShieldCheck, ShieldPlus } from "lucide-react";
 import { portalPathForRole } from "@insurance/shared";
 import { useAuth } from "../lib/auth-context";
 import { useSiteSettings } from "../lib/site-settings";
@@ -13,22 +13,25 @@ import { ThemeToggle } from "./ThemeToggle";
 
 // Platform name and logo from System Settings → General. Falls back to the
 // built-in mark when there's no logo or it fails to load.
-export function BrandMark() {
+// onDark: for the navy header and sidebar. iconOnly: collapsed sidebar.
+export function BrandMark({ onDark = false, iconOnly = false, alwaysShowName = false }: { onDark?: boolean; iconOnly?: boolean; alwaysShowName?: boolean }) {
   const { platformName, logoUrl } = useSiteSettings().status.general;
   const [broken, setBroken] = useState<string | null>(null);
   const showLogo = Boolean(logoUrl) && broken !== logoUrl;
   return (
-    <span className="inline-flex items-center gap-2 font-semibold tracking-tight text-gray-900">
+    <span className={`inline-flex min-w-0 items-center gap-2 font-semibold tracking-tight ${onDark ? "text-[#ffffff]" : "text-gray-900"}`}>
       {showLogo ? (
         // Admin-supplied URL on any host, so next/image's allow-list doesn't fit.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt="" className="h-7 max-w-[120px] object-contain" onError={() => setBroken(logoUrl)} />
+        <img src={logoUrl} alt="" className={iconOnly ? "h-7 w-7 object-contain" : "h-7 max-w-[120px] object-contain"} onError={() => setBroken(logoUrl)} />
       ) : (
-        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-navy text-onaccent">
+        <span
+          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${onDark ? "bg-primary-orange text-[#111827]" : "bg-primary-navy text-onaccent"}`}
+        >
           <ShieldPlus className="h-4 w-4" aria-hidden />
         </span>
       )}
-      <span className="hidden sm:inline">{platformName}</span>
+      {!iconOnly && <span className={alwaysShowName ? "truncate" : "hidden truncate sm:inline"}>{platformName}</span>}
     </span>
   );
 }
@@ -36,7 +39,7 @@ export function BrandMark() {
 // Avatar dropdown (security settings, log out). Shared by the portal header
 // and the public site header, so a signed-in user has the same menu on
 // every page.
-export function UserMenu() {
+export function UserMenu({ onDark = false }: { onDark?: boolean }) {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -67,13 +70,13 @@ export function UserMenu() {
       <button
         type="button"
         onClick={() => setMenuOpen((o) => !o)}
-        className="flex items-center gap-2 rounded-lg p-1 pr-2 transition-colors hover:bg-gray-100"
+        className={`flex items-center gap-2 rounded-lg p-1 pr-2 transition-colors ${onDark ? "hover:bg-[#ffffff1a]" : "hover:bg-gray-100"}`}
         aria-expanded={menuOpen}
         aria-haspopup="true"
         aria-label="Account menu"
       >
         <Avatar firstName={user.firstName} lastName={user.lastName} size="sm" />
-        <span className="hidden text-sm font-medium text-gray-700 md:inline">{user.firstName}</span>
+        <span className={`hidden text-sm font-medium md:inline ${onDark ? "text-[#ffffff]" : "text-gray-700"}`}>{user.firstName}</span>
         <ChevronDown className="h-3.5 w-3.5 text-gray-400" aria-hidden />
       </button>
       {menuOpen && (
@@ -103,18 +106,25 @@ export function UserMenu() {
   );
 }
 
-export function PortalHeader({ title }: { title: string }) {
+// Top bar inside the portals. The brand lives in the sidebar; on small
+// screens the menu button opens the sidebar as a drawer.
+export function PortalHeader({ title, onMenu }: { title: string; onMenu?: () => void }) {
   const { user } = useAuth();
-  const home = user ? portalPathForRole(user.role) : "/";
   return (
     <header className="sticky top-0 z-30 border-b border-gray-200 bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+      <div className="flex h-14 items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <Link href={home} aria-label="Portal home">
-            <BrandMark />
-          </Link>
-          <span className="hidden h-5 w-px bg-gray-200 sm:block" aria-hidden />
-          <span className="truncate text-sm font-medium text-gray-500">{title}</span>
+          {onMenu && (
+            <button
+              type="button"
+              onClick={onMenu}
+              className="-ml-1 inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 lg:hidden"
+              aria-label="Open navigation"
+            >
+              <Menu className="h-5 w-5" aria-hidden />
+            </button>
+          )}
+          <p className="truncate text-lg font-semibold tracking-tight text-primary-navy dark:text-[#9fbbe0]">{title}</p>
         </div>
         <div className="flex items-center gap-1">
           <ThemeToggle />

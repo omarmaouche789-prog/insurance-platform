@@ -20,7 +20,6 @@ interface AgentPreferences {
   emailNotifications: boolean;
   smsNotifications: boolean;
   inAppNotifications: boolean;
-  preferredLanguage: "en" | "ar";
   biography: string;
   timezone: string;
 }
@@ -51,7 +50,6 @@ const DEFAULT_PREFERENCES: AgentPreferences = {
   emailNotifications: true,
   smsNotifications: true,
   inAppNotifications: true,
-  preferredLanguage: "en",
   biography: "",
   timezone: "UTC-5",
 };
@@ -242,15 +240,6 @@ export default function AgentSettingsPage() {
               />
             </div>
 
-            <Field label="Preferred Language">
-              <Select
-                value={preferences.preferredLanguage}
-                onChange={(e) => handleChange("preferredLanguage", e.target.value as "en" | "ar")}
-              >
-                <option value="en">English</option>
-                <option value="ar">العربية (Arabic)</option>
-              </Select>
-            </Field>
           </CardBody>
         </Card>
 

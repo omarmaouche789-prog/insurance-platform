@@ -8,7 +8,7 @@ const NEXT: Record<ThemePreference, ThemePreference> = { system: "light", light:
 const LABEL: Record<ThemePreference, string> = { system: "System theme", light: "Light theme", dark: "Dark theme" };
 
 // Cycles system → light → dark. Follows OS changes while on "system".
-export function ThemeToggle() {
+export function ThemeToggle({ onDark = false }: { onDark?: boolean }) {
   const [pref, setPref] = useState<ThemePreference>("system");
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export function ThemeToggle() {
         applyThemePreference(next);
         setPref(next);
       }}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${onDark ? "text-[#cbd5e1] hover:bg-[#ffffff1a] hover:text-[#ffffff]" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"}`}
       aria-label={`${LABEL[pref]} (click to change)`}
       title={LABEL[pref]}
     >

@@ -9,7 +9,8 @@ import { NotificationBell } from "./NotificationBell";
 import { BrandMark, UserMenu } from "./PortalHeader";
 import { ThemeToggle } from "./ThemeToggle";
 
-const link = "rounded-lg px-2.5 py-1.5 text-gray-600 hover:bg-gray-100 hover:text-gray-900";
+// Fixed light colors on the navy bar (the gray scale flips in dark mode).
+const link = "rounded-lg px-2.5 py-1.5 font-medium text-[#dbe4f0] transition-colors hover:text-primary-orange";
 
 // Header for the public pages (home, plans, compare, blog). It follows the
 // session: a signed-in user keeps their account menu here — and applicants
@@ -21,10 +22,10 @@ export function SiteHeader() {
 
   return (
     <div className="sticky top-0 z-30">
-      <header className="border-b border-gray-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+      <header className="bg-primary-navy shadow-md dark:bg-[#132a47]">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
           <Link href={user ? portalPathForRole(user.role) : "/"} aria-label="Insurance Marketplace home">
-            <BrandMark />
+            <BrandMark onDark />
           </Link>
           <nav className="flex items-center gap-1 text-sm sm:gap-2" aria-label="Main">
             {/* Applicants get these as tabs below instead. */}
@@ -47,9 +48,9 @@ export function SiteHeader() {
                     {user.role === "AGENT" ? "Agent portal" : "Admin portal"}
                   </Link>
                 )}
-                <ThemeToggle />
-                <NotificationBell />
-                <UserMenu />
+                <ThemeToggle onDark />
+                <NotificationBell onDark />
+                <UserMenu onDark />
               </>
             ) : (
               <>
@@ -60,12 +61,12 @@ export function SiteHeader() {
                     <Link href="/login" className={link}>
                       Log in
                     </Link>
-                    <Link href="/register" className="hidden rounded-lg bg-gray-900 px-3 py-1.5 font-medium text-white hover:bg-gray-800 sm:inline-block">
+                    <Link href="/register" className="hidden rounded-full bg-primary-orange px-4 py-2 font-semibold text-[#111827] shadow-sm transition-colors hover:bg-[#f0551c] sm:inline-block">
                       Get started
                     </Link>
                   </>
                 )}
-                <ThemeToggle />
+                <ThemeToggle onDark />
               </>
             )}
           </nav>
