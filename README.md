@@ -116,6 +116,8 @@ Seeded test accounts (dev only — the seed refuses to run with `NODE_ENV=produc
 
 Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w apps/api prisma:migrate` (dev) or `prisma migrate deploy` (production, run automatically by Render before each release).
 
+**After pulling new code, run `npm install` and `npm run -w apps/api prisma:migrate` before `npm run dev`.** If you skip it, pages that use new tables fail (e.g. System Settings, Email Templates, the notification bell). The API prints a warning at startup listing any migrations the database is missing, and answers those requests with `"code": "DATABASE_OUT_OF_DATE"` instead of a bare internal error.
+
 `20261002210017_tier1_security_admin_cms` (this release) is additive — nothing is dropped:
 
 | Table | Change |

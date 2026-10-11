@@ -16,7 +16,9 @@ interface Message {
   toName: string;
   subject: string;
   body: string;
-  sentAt: Date;
+  // ISO string: messages are kept in localStorage as JSON, so a Date
+  // wouldn't survive a reload.
+  sentAt: string;
   read: boolean;
 }
 
@@ -77,7 +79,7 @@ export default function AdminMessagesPage() {
         toName: agent?.name || "Unknown",
         subject: draft.subject,
         body: draft.body,
-        sentAt: new Date(),
+        sentAt: new Date().toISOString(),
         read: false,
       };
 
@@ -147,7 +149,7 @@ export default function AdminMessagesPage() {
                           <h3 className="font-semibold text-gray-900">{selectedMessage.subject}</h3>
                           <p className="text-sm text-gray-600 mt-1">To: {selectedMessage.toName}</p>
                           <p className="text-xs text-gray-500 mt-1">
-                            {formatDateTime(selectedMessage.sentAt.toISOString())}
+                            {formatDateTime(selectedMessage.sentAt)}
                           </p>
                         </div>
                         <div className="border-t border-gray-200 pt-4 text-gray-700 whitespace-pre-wrap">
@@ -189,7 +191,7 @@ export default function AdminMessagesPage() {
                                 </p>
                                 <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
                                   <Clock className="h-3 w-3" />
-                                  {formatDateTime(message.sentAt.toISOString())}
+                                  {formatDateTime(message.sentAt)}
                                 </p>
                               </div>
                             </div>

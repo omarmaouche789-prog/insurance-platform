@@ -54,6 +54,12 @@ function parts(iso: string): { y: string; m: string; d: string; hh: number; mm: 
   return { y: p.year, m: p.month, d: p.day, hh: Number(p.hour) % 24, mm: p.minute };
 }
 
+// Accepts an ISO string or a Date (an invalid Date shows as "—" rather
+// than throwing).
+function toIso(value: string | Date): string {
+  return typeof value === "string" ? value : Number.isNaN(value.getTime()) ? "" : value.toISOString();
+}
+
 function datePart(x: { y: string; m: string; d: string }, format: DateFormat): string {
   if (format === "DD/MM/YYYY") return `${x.d}/${x.m}/${x.y}`;
   if (format === "YYYY-MM-DD") return `${x.y}-${x.m}-${x.d}`;
@@ -67,19 +73,19 @@ function timePart(hh: number, mm: string, format: TimeFormat): string {
 
 export function formatDate(iso: string | Date | null | undefined): string {
   if (!iso) return "—";
-  const x = parts(typeof iso === "string" ? iso : iso.toISOString());
+  const x = parts(toIso(iso));
   return x ? datePart(x, prefs.dateFormat) : "—";
 }
 
 export function formatTime(iso: string | Date | null | undefined): string {
   if (!iso) return "—";
-  const x = parts(typeof iso === "string" ? iso : iso.toISOString());
+  const x = parts(toIso(iso));
   return x ? timePart(x.hh, x.mm, prefs.timeFormat) : "—";
 }
 
 export function formatDateTime(iso: string | Date | null | undefined): string {
   if (!iso) return "—";
-  const x = parts(typeof iso === "string" ? iso : iso.toISOString());
+  const x = parts(toIso(iso));
   return x ? `${datePart(x, prefs.dateFormat)} ${timePart(x.hh, x.mm, prefs.timeFormat)}` : "—";
 }
 
