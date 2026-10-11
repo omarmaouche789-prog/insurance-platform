@@ -10,6 +10,11 @@ import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../components/ui/Toast";
 import { formatDateTime } from "../../../lib/format";
 
+interface Agent {
+  id: string;
+  name: string;
+}
+
 interface Message {
   id: string;
   to: string;
@@ -26,22 +31,50 @@ interface Draft {
   body: string;
 }
 
-const SAMPLE_AGENTS = [
-  { id: "agent1", name: "John Smith" },
-  { id: "agent2", name: "Sarah Johnson" },
-  { id: "agent3", name: "Mike Davis" },
-];
-
 export default function AdminMessagesPage() {
   const { user, accessToken } = useAuth();
   const toast = useToast();
 
   const [tab, setTab] = useState<"inbox" | "compose">("inbox");
   const [messages, setMessages] = useState<Message[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [loadingAgents, setLoadingAgents] = useState(true);
   const [draft, setDraft] = useState<Draft>({ to: "", subject: "", body: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [sending, setSending] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+
+  // Load agents from API
+  useEffect(() => {
+    async function loadAgents() {
+      try {
+        const response = await fetch("/api/admin/agents", {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          // Transform agent data to match our interface
+          const agentList = data.agents.map((agent: any) => ({
+            id: agent.id,
+            name: `${agent.firstName} ${agent.lastName}`,
+          }));
+          setAgents(agentList);
+        } else {
+          console.error("Failed to load agents:", response.statusText);
+        }
+      } catch (err) {
+        console.error("Failed to load agents:", err);
+      } finally {
+        setLoadingAgents(false);
+      }
+    }
+
+    if (accessToken) {
+      loadAgents();
+    }
+  }, [accessToken]);
 
   // Load messages from localStorage
   useEffect(() => {
@@ -70,7 +103,7 @@ export default function AdminMessagesPage() {
 
     setSending(true);
     try {
-      const agent = SAMPLE_AGENTS.find((a) => a.id === draft.to);
+      const agent = agents.find((a) => a.id === draft.to);
       const newMessage: Message = {
         id: `msg-${Date.now()}`,
         to: draft.to,
@@ -205,9 +238,10 @@ export default function AdminMessagesPage() {
                     <Select
                       value={draft.to}
                       onChange={(e) => setDraft((prev) => ({ ...prev, to: e.target.value }))}
+                      disabled={loadingAgents || agents.length === 0}
                     >
-                      <option value="">Select an agent...</option>
-                      {SAMPLE_AGENTS.map((agent) => (
+                      <option value="">{loadingAgents ? "Loading agents..." : "Select an agent..."}</option>
+                      {agents.map((agent) => (
                         <option key={agent.id} value={agent.id}>
                           {agent.name}
                         </option>
@@ -306,7 +340,7 @@ export default function AdminMessagesPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Agents</span>
-                <span className="font-semibold text-gray-900">{SAMPLE_AGENTS.length}</span>
+                <span className="font-semibold text-gray-900">{loadingAgents ? "—" : agents.length}</span>
               </div>
             </CardBody>
           </Card>
