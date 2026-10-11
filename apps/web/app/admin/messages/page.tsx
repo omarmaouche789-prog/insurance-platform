@@ -41,6 +41,7 @@ export default function AdminMessagesPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loadingAgents, setLoadingAgents] = useState(true);
+  const [agentSearchQuery, setAgentSearchQuery] = useState("");
   const [draft, setDraft] = useState<Draft>({ to: "", subject: "", body: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [sending, setSending] = useState(false);
@@ -141,6 +142,10 @@ export default function AdminMessagesPage() {
   }
 
   const unreadCount = messages.filter((m) => !m.read).length;
+
+  const filteredAgents = agents.filter((agent) =>
+    agent.name.toLowerCase().includes(agentSearchQuery.toLowerCase())
+  );
 
   return (
     <PageContainer>
