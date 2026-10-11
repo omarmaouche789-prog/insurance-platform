@@ -17,6 +17,8 @@ export interface NotifyInput {
   body?: string;
   link?: string;
   applicationId?: string;
+  // The admin message it announces (reading the message marks this read).
+  messageId?: string;
 }
 
 // Like email, an in-app notification is a side effect: failing to create one
@@ -31,6 +33,7 @@ export async function notify(userId: string, input: NotifyInput): Promise<boolea
         body: input.body ?? null,
         link: input.link ?? null,
         applicationId: input.applicationId ?? null,
+        messageId: input.messageId ?? null,
       },
     });
     return true;

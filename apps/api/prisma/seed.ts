@@ -264,6 +264,24 @@ async function seedDemoNotifications(agentId: string): Promise<number> {
   return count;
 }
 
+// Demo only: a welcome message from the test admin, with its notification.
+// Skipped if the agent already has messages.
+async function seedDemoMessage(adminId: string, agentId: string): Promise<number> {
+  if (await prisma.message.count({ where: { toAgentId: agentId } })) return 0;
+  const message = await prisma.message.create({
+    data: {
+      fromAdminId: adminId,
+      toAgentId: agentId,
+      subject: "Welcome to the agent portal",
+      body: "Hi Alex,\n\nNew applications in your states are assigned to you automatically. You'll find them under Applications, and messages from the admin team will arrive here.\n\nThanks,\nAda",
+    },
+  });
+  await prisma.notification.create({
+    data: { userId: agentId, type: "message", title: "New message from Ada Admin", link: `/agent/messages?id=${message.id}`, messageId: message.id },
+  });
+  return 1;
+}
+
 async function main() {
   if (process.env.NODE_ENV === "production") {
     throw new Error("Refusing to seed: the seed creates test accounts with the password '123'.");
@@ -281,6 +299,7 @@ async function main() {
     const demoUsers = await seedDemoHistory([agent.id], admin.id, passwordHash);
     console.log(`Seeded ${demoUsers} demo users with application history (SEED_DEMO_DATA=true)`);
     console.log(`Seeded ${await seedDemoNotifications(agent.id)} demo notifications for ${agent.email}`);
+    console.log(`Seeded ${await seedDemoMessage(admin.id, agent.id)} demo message for ${agent.email}`);
   }
 
   console.log(`Seeded ${planCount} plans across ZIPs: ${SEED_ZIPS.join(", ")}`);

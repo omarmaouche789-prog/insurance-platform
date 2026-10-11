@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../../middleware/auth";
+import { unreadMessageCount } from "../messages/messages.service";
 import { listNotifications, markAllRead, markRead } from "./notifications.service";
 
 // Any signed-in user's own notifications.
@@ -16,7 +17,13 @@ const listQuerySchema = z.object({
 notificationsRouter.get("/", async (req, res, next) => {
   try {
     const q = listQuerySchema.parse(req.query);
-    res.status(200).json(await listNotifications(req.auth!.userId, q));
+    const { userId, role } = req.auth!;
+    // Agents also get their unread message count for the bell's second badge.
+    const [list, unreadMessages] = await Promise.all([
+      listNotifications(userId, q),
+      role === "AGENT" ? unreadMessageCount(userId) : undefined,
+    ]);
+    res.status(200).json(unreadMessages === undefined ? list : { ...list, unreadMessageCount: unreadMessages });
   } catch (err) {
     next(err);
   }

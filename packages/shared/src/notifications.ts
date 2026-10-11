@@ -62,6 +62,8 @@ export interface AgentNotificationListResponseDTO {
 export interface NotificationListResponseDTO {
   unreadCount: number;
   notifications: NotificationDTO[];
+  // Agents only: unread admin messages, shown as a second badge on the bell.
+  unreadMessageCount?: number;
 }
 
 // ─── Admin: message templates ────────────────────────────────────────────────

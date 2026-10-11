@@ -40,6 +40,7 @@ export function makeDbMock() {
     loginHistory: { create: vi.fn(), count: vi.fn(), findMany: vi.fn() },
     passwordResetToken: { create: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
     notification: { create: vi.fn(), count: vi.fn(), findMany: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn() },
+    message: { create: vi.fn(), count: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     followUp: { create: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), count: vi.fn(), updateMany: vi.fn(), delete: vi.fn() },
     applicationNote: { create: vi.fn(), findMany: vi.fn() },
     blogPost: {

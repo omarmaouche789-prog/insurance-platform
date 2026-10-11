@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, Mail } from "lucide-react";
 import type { NotificationDTO, NotificationListResponseDTO } from "@insurance/shared";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../lib/auth-context";
@@ -83,6 +83,7 @@ export function NotificationBell({ onDark = false }: { onDark?: boolean }) {
     if (!n.readAt && accessToken) {
       setData((d) =>
         d && {
+          ...d,
           unreadCount: Math.max(0, d.unreadCount - 1),
           notifications: d.notifications.map((x) => (x.id === n.id ? { ...x, readAt: new Date().toISOString() } : x)),
         },
@@ -95,17 +96,20 @@ export function NotificationBell({ onDark = false }: { onDark?: boolean }) {
   async function markAll() {
     if (!accessToken) return;
     await apiFetch("/api/notifications/read-all", { method: "POST", accessToken }).catch(() => undefined);
-    setData((d) => d && { unreadCount: 0, notifications: d.notifications.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })) });
+    setData((d) => d && { ...d, unreadCount: 0, notifications: d.notifications.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() })) });
   }
 
   const unread = data?.unreadCount ?? 0;
+  // Agents only: unread admin messages get their own badge.
+  const unreadMessages = data?.unreadMessageCount ?? 0;
+  const label = [unread && `${unread} unread`, unreadMessages && `${unreadMessages} unread message${unreadMessages === 1 ? "" : "s"}`].filter(Boolean).join(", ");
   return (
     <div className="relative" ref={root}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn("relative inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors", onDark ? "text-[#cbd5e1] hover:bg-[#ffffff1a] hover:text-[#ffffff]" : "text-gray-500 hover:bg-gray-100 hover:text-gray-900")}
-        aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+        aria-label={label ? `Notifications, ${label}` : "Notifications"}
         aria-expanded={open}
         aria-haspopup="true"
       >
@@ -113,6 +117,15 @@ export function NotificationBell({ onDark = false }: { onDark?: boolean }) {
         {unread > 0 && (
           <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-onaccent">
             {unread > 9 ? "9+" : unread}
+          </span>
+        )}
+        {unreadMessages > 0 && (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center gap-px rounded-full bg-primary-orange px-1 text-[10px] font-semibold text-[#111827]"
+            title={`${unreadMessages} unread message${unreadMessages === 1 ? "" : "s"}`}
+          >
+            <Mail className="h-2.5 w-2.5" aria-hidden />
+            {unreadMessages > 9 ? "9+" : unreadMessages}
           </span>
         )}
       </button>
@@ -126,6 +139,21 @@ export function NotificationBell({ onDark = false }: { onDark?: boolean }) {
               </button>
             )}
           </div>
+          {user?.role === "AGENT" && (
+            <Link
+              href="/agent/messages"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 border-b border-gray-100 px-4 py-2.5 text-sm hover:bg-gray-50"
+            >
+              <Mail className="h-4 w-4 text-primary-orange" aria-hidden />
+              <span className="flex-1 font-medium text-gray-900">Messages</span>
+              {unreadMessages > 0 ? (
+                <span className="rounded-full bg-primary-orange px-2 py-0.5 text-xs font-semibold text-[#111827]">{unreadMessages} unread</span>
+              ) : (
+                <span className="text-xs text-gray-500">No unread</span>
+              )}
+            </Link>
+          )}
           {!data || data.notifications.length === 0 ? (
             <p className="px-4 py-10 text-center text-sm text-gray-500">You&apos;re all caught up.</p>
           ) : (

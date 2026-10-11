@@ -12,3 +12,4 @@ export * from "./cms";
 export * from "./notifications";
 export * from "./settings";
 export * from "./emailTemplates";
+export * from "./messages";

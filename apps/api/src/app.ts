@@ -17,6 +17,7 @@ import { notificationsRouter } from "./modules/notifications/notifications.route
 import { plansRouter } from "./modules/plans/plans.routes";
 import { securityRouter } from "./modules/security/security.routes";
 import { agentNotificationsRouter } from "./modules/notifications/agentNotifications.routes";
+import { adminMessagesRouter, agentMessagesRouter } from "./modules/messages/messages.routes";
 import { twoFactorGate } from "./modules/security/twoFactorGate";
 import { requireFeature } from "./modules/settings/requireFeature";
 import { maintenanceGate } from "./modules/settings/maintenance";
@@ -49,6 +50,7 @@ export function createApp() {
   app.use("/api/blog", requireFeature("blog", { status: 404, message: "Not found" }), blogRouter);
   app.use("/api/applications", applicationsRouter);
   app.use("/api/agent/notifications", agentNotificationsRouter);
+  app.use("/api/agent/messages", agentMessagesRouter);
   app.use("/api/agent", agentRouter);
   app.use("/api/admin/users", adminUsersRouter);
   app.use("/api/admin/agents", adminAgentsRouter);
@@ -56,6 +58,7 @@ export function createApp() {
   app.use("/api/admin/analytics", requireFeature("analytics", { status: 403, message: "The analytics dashboard is turned off in System settings." }), adminAnalyticsRouter);
   app.use("/api/admin/cms", requireFeature("blog", { status: 403, message: "The blog is turned off in System settings." }), adminCmsRouter);
   app.use("/api/admin/notifications", adminNotificationsRouter);
+  app.use("/api/admin/messages", adminMessagesRouter);
   app.use("/api/admin/email-templates", adminEmailTemplatesRouter);
   app.use("/api/admin/settings", adminSettingsRouter);
 

@@ -25,6 +25,7 @@ beforeEach(() => {
 describe("notifications API", () => {
   it("lists the caller's notifications with an unread count", async () => {
     prisma.notification.count.mockResolvedValue(2);
+    prisma.message.count.mockResolvedValue(3);
     prisma.notification.findMany.mockResolvedValue([
       { id: "n1", userId: "agent-1", type: "document.uploaded", title: "Uploaded", body: null, link: "/agent", readAt: null, createdAt: new Date("2026-09-01T00:00:00Z") },
     ]);
@@ -33,6 +34,9 @@ describe("notifications API", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.unreadCount).toBe(2);
+    // Agents also get their unread message count for the bell.
+    expect(res.body.unreadMessageCount).toBe(3);
+    expect(prisma.message.count).toHaveBeenCalledWith({ where: { toAgentId: "agent-1", read: false } });
     expect(res.body.notifications[0]).toMatchObject({ id: "n1", readAt: null, createdAt: "2026-09-01T00:00:00.000Z" });
     expect(prisma.notification.findMany.mock.calls[0][0]).toMatchObject({
       where: { userId: "agent-1", readAt: null, createdAt: { gt: new Date(after) } },

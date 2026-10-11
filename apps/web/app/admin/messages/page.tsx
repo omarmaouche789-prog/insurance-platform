@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Send, Search, MessageSquare, User, Clock, Archive } from "lucide-react";
+import { Send, Search, MessageSquare, User, Clock } from "lucide-react";
 import { PageContainer, PageHeader } from "../../../components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
@@ -9,20 +9,13 @@ import { Field, Input, Textarea, Select } from "../../../components/ui/Field";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../components/ui/Toast";
 import { formatDateTime } from "../../../lib/format";
-import { useApiQuery } from "../../../lib/use-api";
-import type { AdminAgentDTO, AdminAgentListResponseDTO } from "@insurance/shared";
-
-interface Message {
-  id: string;
-  to: string;
-  toName: string;
-  subject: string;
-  body: string;
-  // ISO string: messages are kept in localStorage as JSON, so a Date
-  // wouldn't survive a reload.
-  sentAt: string;
-  read: boolean;
-}
+import { apiFetch, describeApiError } from "../../../lib/api";
+import { useApiQuery, useDebounced } from "../../../lib/use-api";
+import { Badge } from "../../../components/ui/Badge";
+import { Pagination } from "../../../components/ui/Pagination";
+import { ErrorState, Skeleton } from "../../../components/ui/States";
+import type { AdminAgentDTO, AdminAgentListResponseDTO, AdminMessageListResponseDTO, MessageDTO } from "@insurance/shared";
+import { MESSAGE_BODY_MAX, MESSAGE_SUBJECT_MAX, MESSAGES_PAGE_SIZE } from "@insurance/shared";
 
 interface Draft {
   to: string;
@@ -32,15 +25,16 @@ interface Draft {
 
 
 export default function AdminMessagesPage() {
-  const { user, accessToken } = useAuth();
+  const { accessToken } = useAuth();
   const toast = useToast();
 
   const [tab, setTab] = useState<"inbox" | "compose">("inbox");
-  const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState<Draft>({ to: "", subject: "", body: "" });
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounced(searchQuery.trim());
+  const [page, setPage] = useState(1);
   const [sending, setSending] = useState(false);
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<MessageDTO | null>(null);
   const [agentSearch, setAgentSearch] = useState("");
 
   // Real, active agents from the database, loaded when the page opens.
@@ -56,23 +50,11 @@ export default function AdminMessagesPage() {
     return agents.filter((a) => agentName(a).toLowerCase().includes(q) || a.id === draft.to);
   }, [agents, agentSearch, draft.to]);
 
-  // Load messages from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("adminMessages");
-    if (saved) {
-      try {
-        setMessages(JSON.parse(saved));
-      } catch (err) {
-        console.error("Failed to load messages:", err);
-      }
-    }
-  }, []);
-
-  const filteredMessages = messages.filter(
-    (m) =>
-      m.toName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Sent messages, with whether each agent has read them yet.
+  const sentQs = new URLSearchParams({ page: String(page), ...(debouncedSearch ? { search: debouncedSearch } : {}) });
+  const sentQuery = useApiQuery<AdminMessageListResponseDTO>(`/api/admin/messages?${sentQs}`, "Couldn't load sent messages");
+  const sent = sentQuery.data;
+  useEffect(() => setPage(1), [debouncedSearch]);
 
   async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
@@ -81,34 +63,27 @@ export default function AdminMessagesPage() {
       return;
     }
 
+    if (!accessToken) return;
     setSending(true);
     try {
-      const agent = agents.find((a) => a.id === draft.to);
-      const newMessage: Message = {
-        id: `msg-${Date.now()}`,
-        to: draft.to,
-        toName: agent ? agentName(agent) : "Unknown",
-        subject: draft.subject,
-        body: draft.body,
-        sentAt: new Date().toISOString(),
-        read: false,
-      };
-
-      const updated = [newMessage, ...messages];
-      setMessages(updated);
-      localStorage.setItem("adminMessages", JSON.stringify(updated));
-
+      const message = await apiFetch<MessageDTO>("/api/admin/messages", {
+        method: "POST",
+        accessToken,
+        body: JSON.stringify({ toAgentId: draft.to, subject: draft.subject, body: draft.body }),
+      });
       setDraft({ to: "", subject: "", body: "" });
+      setAgentSearch("");
+      setSelectedMessage(null);
       setTab("inbox");
-      toast.success("Message sent successfully");
+      setPage(1);
+      sentQuery.reload();
+      toast.success(`Message sent to ${message.to.name}`, "They've been notified in their portal.");
     } catch (err) {
-      toast.error("Failed to send message");
+      toast.error("Couldn't send the message", describeApiError(err));
     } finally {
       setSending(false);
     }
   }
-
-  const unreadCount = messages.filter((m) => !m.read).length;
 
   return (
     <PageContainer>
@@ -122,22 +97,23 @@ export default function AdminMessagesPage() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader
-              title={tab === "inbox" ? "Inbox" : "Compose Message"}
+              title={tab === "inbox" ? "Sent Messages" : "Compose Message"}
               description={
-                tab === "inbox"
-                  ? `${filteredMessages.length} messages${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`
+                tab === "inbox" && sent
+                  ? `${sent.pagination.total} message${sent.pagination.total === 1 ? "" : "s"}${debouncedSearch ? " match" : " sent"}`
                   : undefined
               }
             />
             <CardBody>
               {tab === "inbox" ? (
                 <div className="space-y-4">
-                  <Field label="Search messages">
+                  <Field label="Search messages" htmlFor="sent-search">
                     <div className="relative">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
                       <Input
-                        type="text"
-                        placeholder="Search by agent name or subject..."
+                        id="sent-search"
+                        type="search"
+                        placeholder="Search by subject"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10"
@@ -152,64 +128,72 @@ export default function AdminMessagesPage() {
                           variant="secondary"
                           onClick={() => setSelectedMessage(null)}
                         >
-                          ← Back to Inbox
+                          ← Back to Sent
                         </Button>
                       </div>
                       <div className="rounded-lg border border-gray-200 p-6 space-y-4">
                         <div>
-                          <h3 className="font-semibold text-gray-900">{selectedMessage.subject}</h3>
-                          <p className="text-sm text-gray-600 mt-1">To: {selectedMessage.toName}</p>
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <h3 className="font-semibold text-gray-900">{selectedMessage.subject}</h3>
+                            <ReadBadge message={selectedMessage} />
+                          </div>
+                          <p className="text-sm text-gray-600 mt-1">To: {selectedMessage.to.name}</p>
+                          <p className="text-sm text-gray-600 mt-1">From: {selectedMessage.from.name}</p>
                           <p className="text-xs text-gray-500 mt-1">
-                            {formatDateTime(selectedMessage.sentAt)}
+                            Sent {formatDateTime(selectedMessage.sentAt)}
+                            {selectedMessage.readAt && <> · Read {formatDateTime(selectedMessage.readAt)}</>}
                           </p>
                         </div>
-                        <div className="border-t border-gray-200 pt-4 text-gray-700 whitespace-pre-wrap">
+                        <div className="border-t border-gray-200 pt-4 text-gray-700 whitespace-pre-wrap break-words">
                           {selectedMessage.body}
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      {filteredMessages.length === 0 ? (
-                        <div className="rounded-lg bg-gray-50 p-8 text-center">
-                          <MessageSquare className="mx-auto h-12 w-12 text-gray-300 mb-3" />
-                          <p className="text-gray-600">No messages yet</p>
-                        </div>
-                      ) : (
-                        filteredMessages.map((message) => (
-                          <div
+                    sentQuery.error ? (
+                      <ErrorState message={sentQuery.error} onRetry={sentQuery.reload} />
+                    ) : !sent ? (
+                      <div className="space-y-2" role="status" aria-label="Loading sent messages">
+                        {[0, 1, 2].map((i) => (
+                          <div key={i} className="space-y-2 rounded-lg border border-gray-200 p-4">
+                            <Skeleton className="h-4 w-1/3" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : sent.messages.length === 0 ? (
+                      <div className="rounded-lg bg-gray-50 p-8 text-center">
+                        <MessageSquare className="mx-auto h-12 w-12 text-gray-300 mb-3" aria-hidden />
+                        <p className="text-gray-600">{debouncedSearch ? "No messages match your search" : "No messages sent yet"}</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {sent.messages.map((message) => (
+                          <button
+                            type="button"
                             key={message.id}
                             onClick={() => setSelectedMessage(message)}
-                            className="cursor-pointer rounded-lg border border-gray-200 p-4 transition hover:bg-gray-50"
-                            style={{
-                              backgroundColor: !message.read ? "#f0f9ff" : "white",
-                              borderColor: !message.read ? "#93c5fd" : "#e5e7eb",
-                            }}
+                            className="block w-full rounded-lg border border-gray-200 p-4 text-left transition hover:bg-gray-50"
                           >
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
-                                  <User className="h-4 w-4 flex-shrink-0 text-gray-400" />
-                                  <p className="font-medium text-gray-900 truncate">
-                                    {message.toName}
-                                  </p>
-                                  {!message.read && (
-                                    <span className="flex-shrink-0 inline-block h-2 w-2 rounded-full bg-blue-600" />
-                                  )}
+                                  <User className="h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden />
+                                  <p className="font-medium text-gray-900 truncate">{message.to.name}</p>
                                 </div>
-                                <p className="mt-1 text-sm text-gray-700 truncate">
-                                  {message.subject}
-                                </p>
+                                <p className="mt-1 text-sm text-gray-700 truncate">{message.subject}</p>
                                 <p className="mt-1 flex items-center gap-1 text-xs text-gray-500">
-                                  <Clock className="h-3 w-3" />
+                                  <Clock className="h-3 w-3" aria-hidden />
                                   {formatDateTime(message.sentAt)}
                                 </p>
                               </div>
+                              <ReadBadge message={message} />
                             </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
+                          </button>
+                        ))}
+                        <Pagination page={page} pageSize={MESSAGES_PAGE_SIZE} total={sent.pagination.total} onPage={setPage} />
+                      </div>
+                    )
                   )}
                 </div>
               ) : (
@@ -271,9 +255,11 @@ export default function AdminMessagesPage() {
                     </div>
                   </Field>
 
-                  <Field label="Subject" required>
+                  <Field label="Subject" htmlFor="message-subject" required>
                     <Input
+                      id="message-subject"
                       type="text"
+                      maxLength={MESSAGE_SUBJECT_MAX}
                       placeholder="Message subject"
                       value={draft.subject}
                       onChange={(e) =>
@@ -282,8 +268,10 @@ export default function AdminMessagesPage() {
                     />
                   </Field>
 
-                  <Field label="Message" required>
+                  <Field label="Message" htmlFor="message-body" required hint={`${draft.body.length}/${MESSAGE_BODY_MAX}`}>
                     <Textarea
+                      id="message-body"
+                      maxLength={MESSAGE_BODY_MAX}
                       placeholder="Write your message here..."
                       value={draft.body}
                       onChange={(e) => setDraft((prev) => ({ ...prev, body: e.target.value }))}
@@ -327,13 +315,8 @@ export default function AdminMessagesPage() {
                     : "hover:bg-gray-100 text-gray-700"
                 }`}
               >
-                <MessageSquare className="mb-1 mr-2 inline h-4 w-4" />
-                Inbox
-                {unreadCount > 0 && (
-                  <span className="ml-2 inline-block rounded-full bg-blue-600 px-2 py-0.5 text-xs text-white">
-                    {unreadCount}
-                  </span>
-                )}
+                <MessageSquare className="mb-1 mr-2 inline h-4 w-4" aria-hidden />
+                Sent
               </button>
               <button
                 onClick={() => setTab("compose")}
@@ -343,7 +326,7 @@ export default function AdminMessagesPage() {
                     : "hover:bg-gray-100 text-gray-700"
                 }`}
               >
-                <Send className="mb-1 mr-2 inline h-4 w-4" />
+                <Send className="mb-1 mr-2 inline h-4 w-4" aria-hidden />
                 Compose
               </button>
             </CardBody>
@@ -353,12 +336,8 @@ export default function AdminMessagesPage() {
             <CardHeader title="Quick Stats" />
             <CardBody className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Total Messages</span>
-                <span className="font-semibold text-gray-900">{messages.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Unread</span>
-                <span className="font-semibold text-blue-600">{unreadCount}</span>
+                <span className="text-gray-600">{debouncedSearch ? "Matching Messages" : "Total Sent"}</span>
+                <span className="font-semibold text-gray-900">{sent ? sent.pagination.total : "—"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Agents</span>
@@ -369,6 +348,14 @@ export default function AdminMessagesPage() {
         </div>
       </div>
     </PageContainer>
+  );
+}
+
+function ReadBadge({ message }: { message: MessageDTO }) {
+  return (
+    <Badge tone={message.read ? "green" : "gray"} dot className="shrink-0">
+      {message.read ? "Read" : "Not read yet"}
+    </Badge>
   );
 }
 

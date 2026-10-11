@@ -66,6 +66,8 @@ model User {
   SmsTemplate          SmsTemplate[]
   SystemSetting        SystemSetting[]
   emailTemplateEdits   EmailTemplate[]
+  sentMessages         Message[]            @relation("MessageSender")
+  receivedMessages     Message[]            @relation("MessageRecipient")
 
   @@index([role, isActive])
   @@index([createdAt])
@@ -184,10 +186,14 @@ model Notification {
   // notification if the application is ever removed).
   applicationId String?
   application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  // The admin message it announces; reading the message marks it read.
+  messageId     String?
+  message       Message?     @relation(fields: [messageId], references: [id], onDelete: Cascade)
   readAt        DateTime?
   createdAt     DateTime     @default(now())
 
   @@index([userId, readAt, createdAt])
+  @@index([messageId])
   @@index([userId, type, createdAt])
   @@map("notifications")
 }
@@ -605,4 +611,27 @@ model SystemSetting {
 
   @@unique([section, key])
   @@map("system_settings")
+}
+
+// ─── Admin → agent messages ──────────────────────────────────────────────────
+// One row per message. `read` mirrors `readAt` (write both) so the inbox can
+// filter and count without null checks.
+model Message {
+  id            String         @id @default(uuid())
+  fromAdminId   String
+  fromAdmin     User           @relation("MessageSender", fields: [fromAdminId], references: [id], onDelete: Restrict)
+  toAgentId     String
+  toAgent       User           @relation("MessageRecipient", fields: [toAgentId], references: [id], onDelete: Restrict)
+  subject       String
+  body          String
+  sentAt        DateTime       @default(now())
+  read          Boolean        @default(false)
+  readAt        DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  notifications Notification[]
+
+  @@index([toAgentId, read, sentAt])
+  @@index([fromAdminId, sentAt])
+  @@map("messages")
 }

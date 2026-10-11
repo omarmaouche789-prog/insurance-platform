@@ -96,4 +96,11 @@ export const limiters = {
     key: (req) => req.auth?.userId ?? req.ip ?? "unknown",
     message: "Too many requests for this action. Try again in a few minutes.",
   }),
+  // Per admin: messages notify the agent, so keep a runaway client from flooding them.
+  messageSend: rateLimit("message-send", {
+    windowMs: 15 * MINUTE,
+    max: 60,
+    key: (req) => req.auth?.userId ?? req.ip ?? "unknown",
+    message: "Too many messages sent. Try again in a few minutes.",
+  }),
 };
