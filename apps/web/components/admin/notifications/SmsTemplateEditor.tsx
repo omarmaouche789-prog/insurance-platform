@@ -254,7 +254,7 @@ export function SmsTemplateEditor({
               <Smartphone className="h-4 w-4 text-gray-400" aria-hidden /> Preview
             </p>
             <div className="rounded-[1.75rem] border border-gray-200 bg-gray-100 p-4">
-              <div className="ml-auto w-fit max-w-full whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-indigo-600 px-3.5 py-2.5 text-sm leading-snug text-onaccent shadow-sm">
+              <div className="ml-auto w-fit max-w-full whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary-navy px-3.5 py-2.5 text-sm leading-snug text-onaccent shadow-sm">
                 {rendered || <span className="opacity-70">Empty message</span>}
               </div>
             </div>

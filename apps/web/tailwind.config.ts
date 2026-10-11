@@ -19,6 +19,10 @@ const config: Config = {
         // Text on solid accent fills (indigo/red/green buttons), which stays
         // white in both themes unlike `white` above.
         onaccent: "#ffffff",
+        // Primary navy blue color for the insurance platform
+        "primary-navy": "#1e3a5f",
+        // Orange/amber for CTAs and secondary actions
+        "primary-orange": "#f59e0b",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],

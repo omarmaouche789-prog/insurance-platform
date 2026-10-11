@@ -8,16 +8,16 @@ export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "acce
 type Size = "sm" | "md";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-gray-900 text-white hover:bg-gray-800 shadow-sm",
-  accent: "bg-indigo-600 text-onaccent hover:bg-indigo-500 shadow-sm",
+  primary: "bg-primary-navy text-white hover:bg-opacity-90 shadow-sm",
+  accent: "bg-primary-orange text-gray-900 hover:bg-opacity-90 shadow-sm",
   secondary: "border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 shadow-sm",
   danger: "bg-red-600 text-onaccent hover:bg-red-500 shadow-sm",
   ghost: "text-gray-700 hover:bg-gray-100",
-  // Brand colors for the notification template editor: navy for the primary
-  // action, orange for secondary ones. Fixed hex values (they don't flip in
-  // dark mode); dark text on orange keeps contrast readable.
-  navy: "bg-[#1e3a5f] text-onaccent hover:bg-[#274b78] shadow-sm dark:bg-[#2b5286] dark:hover:bg-[#33609b]",
-  orange: "bg-[#f59e0b] text-[#111827] hover:bg-[#d98b06] shadow-sm",
+  // Brand navy/orange (tailwind `primary-*`) with fixed hover and dark-mode
+  // shades: navy is lifted in dark mode so it stays visible, and orange keeps
+  // near-black text for contrast (gray-900 would flip to light in dark mode).
+  navy: "bg-primary-navy text-onaccent hover:bg-[#274b78] shadow-sm dark:bg-[#2b5286] dark:hover:bg-[#33609b]",
+  orange: "bg-primary-orange text-[#111827] hover:bg-[#d98b06] shadow-sm",
 };
 
 const SIZES: Record<Size, string> = {

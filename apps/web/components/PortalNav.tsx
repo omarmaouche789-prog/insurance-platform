@@ -38,7 +38,7 @@ export function PortalNav({ links, label }: { links: PortalLink[]; label: string
               aria-current={isActive ? "page" : undefined}
               className={cn(
                 "-mb-px inline-flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm transition-colors",
-                isActive ? "border-indigo-600 font-medium text-gray-900" : "border-transparent text-gray-500 hover:text-gray-900",
+                isActive ? "border-primary-navy font-medium text-gray-900" : "border-transparent text-gray-500 hover:text-gray-900",
               )}
             >
               <Icon className="h-4 w-4" aria-hidden />
