@@ -18,8 +18,9 @@ export interface TwoFactorStatusDTO {
   enabled: boolean;
   enabledAt: string | null;
   backupCodesRemaining: number;
-  // False when an admin has turned off 2FA enrollment in System Settings.
-  setupAvailable: boolean;
+  // True when System Settings require 2FA for this account's role
+  // (admins and agents); it then can't be turned off.
+  required: boolean;
 }
 
 // Returned when setup starts. The secret is also shown as text for apps that

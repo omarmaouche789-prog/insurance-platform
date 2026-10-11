@@ -3,7 +3,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, Mail, MessageSquare, Shield, Save, AlertCircle } from "lucide-react";
-import type { UserDTO } from "@insurance/shared";
 import { useAuth } from "../../../lib/auth-context";
 import { apiFetch, describeApiError } from "../../../lib/api";
 import { PageContainer, PageHeader } from "../../../components/ui/PageHeader";
@@ -21,7 +20,6 @@ interface AgentPreferences {
   emailNotifications: boolean;
   smsNotifications: boolean;
   inAppNotifications: boolean;
-  preferredLanguage: "en" | "ar";
   biography: string;
   timezone: string;
 }
@@ -52,7 +50,6 @@ const DEFAULT_PREFERENCES: AgentPreferences = {
   emailNotifications: true,
   smsNotifications: true,
   inAppNotifications: true,
-  preferredLanguage: "en",
   biography: "",
   timezone: "UTC-5",
 };
@@ -135,7 +132,7 @@ export default function AgentSettingsPage() {
     <PageContainer>
       <PageHeader title="Settings" description="Manage your availability, preferences, and communication settings." />
 
-      {error && <Alert type="error" icon={<AlertCircle />}>{error}</Alert>}
+      {error && <Alert tone="red">{error}</Alert>}
 
       <div className="grid gap-6">
         {/* Availability Section */}
@@ -243,15 +240,6 @@ export default function AgentSettingsPage() {
               />
             </div>
 
-            <Field label="Preferred Language">
-              <Select
-                value={preferences.preferredLanguage}
-                onChange={(e) => handleChange("preferredLanguage", e.target.value as "en" | "ar")}
-              >
-                <option value="en">English</option>
-                <option value="ar">العربية (Arabic)</option>
-              </Select>
-            </Field>
           </CardBody>
         </Card>
 
@@ -268,7 +256,7 @@ export default function AgentSettingsPage() {
               />
             </Field>
             <p className="text-xs text-gray-600">
-              This bio will be visible to applicants when they're assigned to you.
+              This bio will be visible to applicants when they&apos;re assigned to you.
             </p>
           </CardBody>
         </Card>
@@ -301,7 +289,7 @@ export default function AgentSettingsPage() {
             Save Changes
           </Button>
           <Button
-            variant="outline"
+            variant="secondary"
             onClick={() => router.back()}
           >
             Cancel

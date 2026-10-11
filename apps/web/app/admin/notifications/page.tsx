@@ -11,7 +11,7 @@ import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
 import { Button } from "../../../components/ui/Button";
 import { Select } from "../../../components/ui/Field";
 import { Badge } from "../../../components/ui/Badge";
-import { formatDateTime, formatRelativeTime } from "../../../lib/format";
+import { formatDateTime, formatRelative } from "../../../lib/format";
 
 type Tab = "activity" | "email" | "sms";
 
@@ -124,7 +124,7 @@ function ActivityTab() {
             </div>
             {unreadCount > 0 && (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
                 onClick={markAllAsRead}
               >
@@ -138,7 +138,7 @@ function ActivityTab() {
 
       {/* Activity List */}
       <Card>
-        <CardHeader title={`Activity Feed (${filtered.length})`} subtitle={unreadCount > 0 ? `${unreadCount} unread` : undefined} />
+        <CardHeader title={`Activity Feed (${filtered.length})`} description={unreadCount > 0 ? `${unreadCount} unread` : undefined} />
         <CardBody>
           {filtered.length === 0 ? (
             <div className="rounded-lg bg-gray-50 p-12 text-center">
@@ -172,7 +172,7 @@ function ActivityTab() {
                       {notification.description}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {formatRelativeTime(notification.createdAt)}
+                      {formatRelative(notification.createdAt.toISOString())}
                     </p>
                   </div>
                   <div className="flex-shrink-0 flex gap-1">
@@ -236,8 +236,8 @@ export default function AdminNotificationsPage() {
           onChange={changeTab}
           tabs={[
             { value: "activity", label: "Activity Dashboard" },
-            { value: "email", label: "Email templates" },
-            { value: "sms", label: "SMS templates" },
+            { value: "email", label: "Email Templates" },
+            { value: "sms", label: "SMS Templates" },
           ]}
         />
       </div>

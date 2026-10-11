@@ -68,27 +68,24 @@ export async function getTwoFactorStatus(userId: string): Promise<TwoFactorStatu
   const backupCodesRemaining = enabledAt
     ? await prisma.backupCode.count({ where: { userId, usedAt: null } })
     : 0;
-  const { features } = await getSystemSettings();
   return {
     enabled: Boolean(enabledAt),
     enabledAt: enabledAt?.toISOString() ?? null,
     backupCodesRemaining,
-    setupAvailable: features.twoFactor,
+    required: await isTwoFactorRequired(user.role),
   };
+}
+
+// System Settings → "Two-Factor Authentication" ON makes 2FA mandatory for
+// admins and agents. Applicants can always opt in or out.
+export async function isTwoFactorRequired(role: string): Promise<boolean> {
+  return (role === "ADMIN" || role === "AGENT") && (await getSystemSettings()).features.twoFactor;
 }
 
 // Step 1 of enrollment: a fresh secret, not yet active. Calling it again
 // before confirming simply replaces the pending secret.
-const SETUP_OFF = "Two-factor setup is currently turned off by your administrator.";
-
-// The System Settings switch only stops new enrollments. Disabling, backup
-// codes and the sign-in challenge keep working for anyone already enrolled.
-async function assertSetupAvailable(): Promise<void> {
-  if (!(await getSystemSettings()).features.twoFactor) throw new HttpError(403, SETUP_OFF);
-}
 
 export async function beginTwoFactorSetup(userId: string, req: Request): Promise<TwoFactorEnableResponseDTO> {
-  await assertSetupAvailable();
   const user = await findUserWithFactor(userId);
   if (user.twoFactorSecret?.enabledAt) {
     throw new HttpError(409, "Two-factor authentication is already on. Turn it off first to set up a new device.");
@@ -121,7 +118,6 @@ async function replaceBackupCodes(userId: string): Promise<string[]> {
 // Step 2: prove the authenticator works, which turns 2FA on and issues the
 // one-time view of the backup codes.
 export async function confirmTwoFactorSetup(userId: string, code: string, req: Request): Promise<BackupCodesResponseDTO> {
-  await assertSetupAvailable();
   const user = await findUserWithFactor(userId);
   const record = user.twoFactorSecret;
   if (!record) throw new HttpError(400, "Start two-factor setup first");
@@ -162,6 +158,9 @@ export async function disableTwoFactor(userId: string, password: string, code: s
   const user = await findUserWithFactor(userId);
   const record = user.twoFactorSecret;
   if (!record?.enabledAt) throw new HttpError(409, "Two-factor authentication isn't on");
+  if (await isTwoFactorRequired(user.role)) {
+    throw new HttpError(409, "Two-factor authentication is required for your role and can't be turned off.");
+  }
   if (!(await verifyPassword(password, user.passwordHash))) throw new HttpError(400, "Password is incorrect");
   const method = await consumeSecondFactor(record, code);
   if (!method) throw new HttpError(400, "That code didn't match");

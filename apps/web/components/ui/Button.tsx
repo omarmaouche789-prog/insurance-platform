@@ -4,15 +4,22 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { cn } from "./cn";
 
-export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "accent";
+export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "accent" | "navy" | "orange";
 type Size = "sm" | "md";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-primary-navy text-white hover:bg-opacity-90 shadow-sm",
-  accent: "bg-primary-orange text-gray-900 hover:bg-opacity-90 shadow-sm",
+  // Brand orange (#ff6b35) for primary actions. Near-black text: white on
+  // this orange is only 2.8:1 contrast, below the 4.5:1 accessibility minimum.
+  primary: "bg-primary-orange text-[#111827] hover:bg-[#f0551c] shadow-sm",
+  accent: "bg-primary-orange text-[#111827] hover:bg-[#f0551c] shadow-sm",
   secondary: "border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 shadow-sm",
   danger: "bg-red-600 text-onaccent hover:bg-red-500 shadow-sm",
   ghost: "text-gray-700 hover:bg-gray-100",
+  // Brand navy/orange (tailwind `primary-*`) with fixed hover and dark-mode
+  // shades: navy is lifted in dark mode so it stays visible, and orange keeps
+  // near-black text for contrast (gray-900 would flip to light in dark mode).
+  navy: "bg-primary-navy text-onaccent hover:bg-[#274b78] shadow-sm dark:bg-[#2b5286] dark:hover:bg-[#33609b]",
+  orange: "bg-primary-orange text-[#111827] hover:bg-[#f0551c] shadow-sm",
 };
 
 const SIZES: Record<Size, string> = {

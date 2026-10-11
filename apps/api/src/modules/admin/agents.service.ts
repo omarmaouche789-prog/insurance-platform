@@ -10,6 +10,7 @@ import type {
   PayCommissionsResponseDTO,
   UpdateAgentRequestDTO,
 } from "@insurance/shared";
+import { applicationReference } from "@insurance/shared";
 import { prisma } from "../../lib/prisma";
 import { recordAuditEvent } from "../../lib/audit";
 import { unusablePasswordHash } from "../../lib/password";
@@ -17,6 +18,8 @@ import { HttpError } from "../../middleware/errorHandler";
 import { email } from "../../integrations/email";
 import { emailTemplates } from "../../integrations/emailTemplates";
 import { findAgentForZip } from "../agent/assignment";
+import { sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
+import { notify } from "../notifications/notifications.service";
 import { getCommissions } from "../agent/agent.service";
 import { emptyCommissionTotals, loadAgentPerformance } from "../agent/performance";
 import { issuePasswordResetToken, RESET_TOKEN_TTL_HOURS } from "../security/passwordReset.service";
@@ -293,14 +296,34 @@ export async function deactivateAgent(
   if (opts.reassignOpen) {
     const open = await prisma.application.findMany({
       where: { agentId: id, ...REASSIGNABLE },
-      select: { id: true, zipCode: true },
+      select: { id: true, zipCode: true, firstName: true, lastName: true, status: true, user: { select: { email: true } } },
     });
     for (const app of open) {
       // findAgentForZip only considers active agents, so this agent is excluded.
       const nextAgentId = app.zipCode ? await findAgentForZip(app.zipCode) : null;
-      await prisma.application.update({ where: { id: app.id }, data: { agentId: nextAgentId } });
-      if (nextAgentId) reassigned += 1;
-      else unassigned += 1;
+      const updated = await prisma.application.update({
+        where: { id: app.id },
+        data: { agentId: nextAgentId },
+        select: { agent: { select: { firstName: true, lastName: true } } },
+      });
+      if (nextAgentId) {
+        reassigned += 1;
+        await notify(nextAgentId, {
+          type: "application.assigned",
+          title: `Application reassigned to you: ${app.firstName} ${app.lastName ?? ""}`.trim(),
+          body: "Its previous agent was deactivated.",
+          link: `/agent/applications/${app.id}`,
+          applicationId: app.id,
+        });
+        if (updated.agent) {
+          await sendTemplatedEmail("AGENT_ASSIGNED", app.user.email, app.id, {
+            userName: app.firstName,
+            appId: applicationReference(app.id),
+            status: app.status === "DRAFT" ? "In progress" : "Needs attention",
+            agentName: `${updated.agent.firstName} ${updated.agent.lastName}`,
+          });
+        }
+      } else unassigned += 1;
     }
   }
 

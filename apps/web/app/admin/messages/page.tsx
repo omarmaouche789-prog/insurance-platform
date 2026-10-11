@@ -21,7 +21,9 @@ interface Message {
   toName: string;
   subject: string;
   body: string;
-  sentAt: Date;
+  // ISO string: messages are kept in localStorage as JSON, so a Date
+  // wouldn't survive a reload.
+  sentAt: string;
   read: boolean;
 }
 
@@ -110,7 +112,7 @@ export default function AdminMessagesPage() {
         toName: agent?.name || "Unknown",
         subject: draft.subject,
         body: draft.body,
-        sentAt: new Date(),
+        sentAt: new Date().toISOString(),
         read: false,
       };
 
@@ -143,7 +145,7 @@ export default function AdminMessagesPage() {
           <Card>
             <CardHeader
               title={tab === "inbox" ? "Inbox" : "Compose Message"}
-              subtitle={
+              description={
                 tab === "inbox"
                   ? `${filteredMessages.length} messages${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`
                   : undefined
@@ -169,7 +171,7 @@ export default function AdminMessagesPage() {
                     <div className="space-y-4">
                       <div className="flex items-center gap-2">
                         <Button
-                          variant="outline"
+                          variant="secondary"
                           onClick={() => setSelectedMessage(null)}
                         >
                           ← Back to Inbox
@@ -280,7 +282,7 @@ export default function AdminMessagesPage() {
                       Send Message
                     </Button>
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       type="button"
                       onClick={() => setTab("inbox")}
                     >

@@ -1,6 +1,10 @@
 import { env } from "../lib/env";
 import type { EmailMessage } from "./email";
 
+// Fixed-wording system emails. The five admin-editable applicant emails
+// (submitted, approved, rejected, agent assigned, documents requested) live in
+// modules/emailTemplates instead.
+//
 // Every template is deliberately PHI-free: names, a confirmation number, and a
 // link to sign in. Anything more specific (plan, health, reasons, document
 // contents) stays in the portal.
@@ -26,33 +30,12 @@ function render(subject: string, greetingName: string, paragraphs: string[], cta
 const applicationPath = (id: string) => `/account/applications/${id}`;
 
 export const emailTemplates = {
-  enrollmentConfirmation(p: { firstName: string; applicationId: string; confirmationNumber: string }): Template {
-    return render(
-      "We received your insurance application",
-      p.firstName,
-      [
-        `Your application was sent to the carrier. Your confirmation number is ${p.confirmationNumber}.`,
-        "We'll email you again once it has been reviewed.",
-      ],
-      { label: "View your application", path: applicationPath(p.applicationId) },
-    );
-  },
-
   carrierNeedsInfo(p: { firstName: string; applicationId: string }): Template {
     return render(
       "Update on your insurance application",
       p.firstName,
       ["The carrier needs more information before it can process your application. Your agent will follow up."],
       { label: "See what's needed", path: applicationPath(p.applicationId) },
-    );
-  },
-
-  documentRequest(p: { firstName: string; applicationId: string; documentLabels: string[] }): Template {
-    return render(
-      "Your agent needs documents for your application",
-      p.firstName,
-      [`Please upload: ${p.documentLabels.join(", ")}.`],
-      { label: "Upload documents", path: applicationPath(p.applicationId) },
     );
   },
 
@@ -63,27 +46,6 @@ export const emailTemplates = {
       p.accepted
         ? [`Your agent resubmitted your application and the carrier accepted it. Confirmation number: ${p.confirmationNumber}.`]
         : ["Your agent resubmitted your application, but the carrier still needs more information. Your agent will follow up."],
-      { label: "View your application", path: applicationPath(p.applicationId) },
-    );
-  },
-
-  approval(p: { firstName: string; applicationId: string; confirmationNumber: string | null }): Template {
-    return render(
-      "Your insurance application was approved",
-      p.firstName,
-      [
-        `Good news: your application${p.confirmationNumber ? ` (${p.confirmationNumber})` : ""} has been approved.`,
-        "Your carrier will send your coverage documents.",
-      ],
-      { label: "View your application", path: applicationPath(p.applicationId) },
-    );
-  },
-
-  rejectionToApplicant(p: { firstName: string; applicationId: string }): Template {
-    return render(
-      "Update on your insurance application",
-      p.firstName,
-      ["Your application was not approved. Sign in to see the reason and talk to your agent about other options."],
       { label: "View your application", path: applicationPath(p.applicationId) },
     );
   },

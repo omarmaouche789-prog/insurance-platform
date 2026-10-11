@@ -23,9 +23,9 @@ export async function maintenanceGate(req: Request, res: Response, next: NextFun
   try {
     if (ALWAYS_OPEN.some((re) => re.test(req.path))) return next();
     const { maintenance } = await getSystemSettings();
-    if (!maintenance.enabled || isAdminRequest(req)) return next();
-    res.setHeader("Retry-After", "300");
-    res.status(503).json({ error: maintenance.message, code: MAINTENANCE_ERROR_CODE });
+    if (!maintenance.maintenanceMode || isAdminRequest(req)) return next();
+    res.setHeader("Retry-After", "120");
+    res.status(503).json({ error: maintenance.maintenanceMessage, code: MAINTENANCE_ERROR_CODE });
   } catch (err) {
     next(err);
   }

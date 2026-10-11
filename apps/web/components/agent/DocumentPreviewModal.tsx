@@ -11,6 +11,7 @@ import { formatBytes } from "../applications/DocumentUploadRow";
 import { Button, IconButton } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 import { ErrorState, LoadingState } from "../ui/States";
+import { formatDateTime } from "../../lib/format";
 
 // In-browser viewer for applicant uploads. The file is fetched with the
 // agent's token (every fetch is audit-logged server-side) and shown from a
@@ -56,7 +57,7 @@ export function DocumentPreviewModal({ applicationId, document, onClose }: { app
       onClose={onClose}
       size="xl"
       title={document ? DOCUMENT_TYPE_LABELS[document.type] : ""}
-      description={document ? `${document.fileName} · ${formatBytes(document.sizeBytes)} · uploaded ${new Date(document.uploadedAt).toLocaleString()}` : undefined}
+      description={document ? `${document.fileName} · ${formatBytes(document.sizeBytes)} · uploaded ${formatDateTime(document.uploadedAt)}` : undefined}
       footer={
         <>
           {!isPdf && url && (

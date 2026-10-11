@@ -61,7 +61,7 @@ function isSafeUrl(url: string): boolean {
   }
 }
 
-function Toolbar({ editor, onLink, onImage }: { editor: Editor; onLink: () => void; onImage: () => void }) {
+function Toolbar({ editor, onLink, onImage }: { editor: Editor; onLink: () => void; onImage?: () => void }) {
   // Re-render the toolbar only when the active marks/nodes actually change.
   const s = useEditorState({
     editor,
@@ -101,7 +101,7 @@ function Toolbar({ editor, onLink, onImage }: { editor: Editor; onLink: () => vo
       <Divider />
       <ToolbarButton label="Link" active={s.link} onClick={onLink}><Link2 className={i} /></ToolbarButton>
       {s.link && <ToolbarButton label="Remove link" onClick={() => chain().extendMarkRange("link").unsetLink().run()}><Unlink className={i} /></ToolbarButton>}
-      <ToolbarButton label="Image" onClick={onImage}><ImagePlus className={i} /></ToolbarButton>
+      {onImage && <ToolbarButton label="Image" onClick={onImage}><ImagePlus className={i} /></ToolbarButton>}
       <span className="ml-auto flex">
         <ToolbarButton label="Undo" disabled={!s.canUndo} onClick={() => chain().undo().run()}><Undo2 className={i} /></ToolbarButton>
         <ToolbarButton label="Redo" disabled={!s.canRedo} onClick={() => chain().redo().run()}><Redo2 className={i} /></ToolbarButton>
@@ -112,7 +112,28 @@ function Toolbar({ editor, onLink, onImage }: { editor: Editor; onLink: () => vo
 
 // WYSIWYG editor producing HTML. The server sanitizes everything it stores,
 // so this is a convenience boundary, not a security one.
-export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€¦" }: { value: string; onChange: (html: string) => void; placeholder?: string }) {
+export function RichTextEditor({
+  value,
+  onChange,
+  placeholder = "Start writingâ€¦",
+  allowImages = true,
+  readOnly = false,
+  label = "Post content",
+  minHeightClass = "min-h-[240px]",
+  onReady,
+  onFocus,
+}: {
+  value: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+  allowImages?: boolean;
+  readOnly?: boolean;
+  label?: string;
+  minHeightClass?: string;
+  // Hands the editor to the parent, e.g. to insert text at the cursor.
+  onReady?: (editor: Editor) => void;
+  onFocus?: () => void;
+}) {
   const [dialog, setDialog] = useState<"link" | "image" | null>(null);
   const [url, setUrl] = useState("");
   const [alt, setAlt] = useState("");
@@ -126,15 +147,25 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€
         heading: { levels: [2, 3, 4] },
         link: { openOnClick: false, autolink: true, protocols: ["mailto"], HTMLAttributes: { rel: "noopener noreferrer nofollow", target: "_blank" } },
       }),
-      Image.configure({ inline: false }),
+      ...(allowImages ? [Image.configure({ inline: false })] : []),
       Placeholder.configure({ placeholder }),
     ],
     content: value,
+    editable: !readOnly,
     editorProps: {
-      attributes: { class: "prose-content tiptap min-h-[240px] px-5 py-4 text-gray-800", "aria-label": "Post content", role: "textbox", "aria-multiline": "true" },
+      attributes: { class: cn("prose-content tiptap px-5 py-4 text-gray-800", minHeightClass), "aria-label": label, role: "textbox", "aria-multiline": "true" },
     },
     onUpdate: ({ editor: e }) => onChange(e.isEmpty ? "" : e.getHTML()),
+    onFocus: () => onFocus?.(),
   });
+
+  useEffect(() => {
+    if (editor) onReady?.(editor);
+  }, [editor, onReady]);
+
+  useEffect(() => {
+    if (editor && editor.isEditable === readOnly) editor.setEditable(!readOnly);
+  }, [editor, readOnly]);
 
   // Load content that arrives after mount (editing an existing post).
   useEffect(() => {
@@ -164,8 +195,17 @@ export function RichTextEditor({ value, onChange, placeholder = "Start writingâ€
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-300 bg-white shadow-sm focus-within:border-primary-navy focus-within:ring-2 focus-within:ring-primary-navy/20">
-      {editor ? <Toolbar editor={editor} onLink={() => openDialog("link")} onImage={() => openDialog("image")} /> : <div className="h-11 border-b border-gray-200" />}
+    <div
+      className={cn(
+        "overflow-hidden rounded-xl border border-gray-300 shadow-sm focus-within:border-primary-navy focus-within:ring-2 focus-within:ring-primary-navy/20",
+        readOnly ? "bg-gray-50" : "bg-white",
+      )}
+    >
+      {readOnly ? null : editor ? (
+        <Toolbar editor={editor} onLink={() => openDialog("link")} onImage={allowImages ? () => openDialog("image") : undefined} />
+      ) : (
+        <div className="h-11 border-b border-gray-200" />
+      )}
       <EditorContent editor={editor} />
       <Modal
         open={dialog !== null}

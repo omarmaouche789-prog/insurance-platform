@@ -3,17 +3,60 @@ export const NOTIFICATION_TYPES = [
   "document.requested",
   "followup.scheduled",
   "account.security",
+  "application.assigned",
+  "application.status",
+  "carrier.response",
+  "message",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+// The categories the agent Notification Center filters by. Each groups one
+// or more stored notification types; anything else is "Other".
+export const NOTIFICATION_CATEGORIES = ["ASSIGNMENT", "STATUS_UPDATE", "CARRIER_RESPONSE", "DOCUMENT_REQUEST", "MESSAGE", "OTHER"] as const;
+export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number];
+
+export const NOTIFICATION_CATEGORY_TYPES: Record<Exclude<NotificationCategory, "OTHER">, NotificationType[]> = {
+  ASSIGNMENT: ["application.assigned"],
+  STATUS_UPDATE: ["application.status"],
+  CARRIER_RESPONSE: ["carrier.response"],
+  DOCUMENT_REQUEST: ["document.uploaded", "document.requested"],
+  MESSAGE: ["message"],
+};
+
+export const NOTIFICATION_CATEGORY_LABELS: Record<NotificationCategory, string> = {
+  ASSIGNMENT: "Assignment",
+  STATUS_UPDATE: "Status Update",
+  CARRIER_RESPONSE: "Carrier Response",
+  DOCUMENT_REQUEST: "Document Request",
+  MESSAGE: "Message",
+  OTHER: "Other",
+};
+
+export function notificationCategory(type: string): NotificationCategory {
+  for (const [category, types] of Object.entries(NOTIFICATION_CATEGORY_TYPES)) {
+    if ((types as string[]).includes(type)) return category as NotificationCategory;
+  }
+  return "OTHER";
+}
 
 export interface NotificationDTO {
   id: string;
   type: string;
+  category: NotificationCategory;
   title: string;
   body: string | null;
   link: string | null;
+  applicationId: string | null;
   readAt: string | null;
   createdAt: string;
+}
+
+export const AGENT_NOTIFICATIONS_PAGE_SIZE = 20;
+
+export interface AgentNotificationListResponseDTO {
+  notifications: NotificationDTO[];
+  unreadCount: number;
+  pagination: { page: number; pageSize: number; total: number; pages: number };
 }
 
 export interface NotificationListResponseDTO {
