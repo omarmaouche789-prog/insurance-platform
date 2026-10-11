@@ -196,10 +196,13 @@ describe("POST /api/admin/agents/:id/deactivate", () => {
   it("keeps history, blocks login, and reassigns unsubmitted work in-region", async () => {
     prisma.user.findFirst.mockResolvedValueOnce(agent()).mockResolvedValue(agent({ isActive: false }, { isActive: false }));
     prisma.application.findMany.mockResolvedValue([
-      { id: "app-1", zipCode: "10001" },
-      { id: "app-2", zipCode: "99999" },
+      { id: "app-1", zipCode: "10001", firstName: "Uma", status: "DRAFT", user: { email: "uma@example.com" } },
+      { id: "app-2", zipCode: "99999", firstName: "Ian", status: "DRAFT", user: { email: "ian@example.com" } },
     ]);
     assignment.findAgentForZip.mockImplementation(async (zip: string) => (zip === "10001" ? "agent-2" : null));
+    prisma.application.update.mockImplementation(async ({ data }: { data: { agentId: string | null } }) => ({
+      agent: data.agentId ? { firstName: "Bea", lastName: "Agent" } : null,
+    }));
     prisma.application.groupBy.mockResolvedValue([]);
     prisma.commission.groupBy.mockResolvedValue([]);
 
@@ -209,10 +212,15 @@ describe("POST /api/admin/agents/:id/deactivate", () => {
     expect(res.body).toMatchObject({ reassigned: 1, unassigned: 1, agent: { isActive: false } });
     expect(prisma.user.update.mock.calls[0][0].data).toMatchObject({ isActive: false, suspensionReason: "Left the agency" });
     expect(prisma.application.findMany.mock.calls[0][0].where).toMatchObject({ agentId: "agent-1" });
-    expect(prisma.application.update.mock.calls.map((c) => c[0])).toEqual([
+    expect(prisma.application.update.mock.calls.map((c) => c[0])).toMatchObject([
       { where: { id: "app-1" }, data: { agentId: "agent-2" } },
       { where: { id: "app-2" }, data: { agentId: null } },
     ]);
+    // Only the applicant who got a new agent hears about it.
+    const sent = mailer.send.mock.calls.map((c) => c[0]);
+    expect(sent.map((m) => m.to)).toEqual(["uma@example.com"]);
+    expect(sent[0]).toMatchObject({ subject: "Meet your licensed insurance agent" });
+    expect(sent[0].text).toContain("Bea Agent");
     expect(prisma.refreshToken.updateMany).toHaveBeenCalled();
   });
 

@@ -47,7 +47,11 @@ Date-range presets or custom dates; user acquisition (weekly or monthly), applic
 
 ### Notification templates (`/admin/notifications`)
 
-Two tabs. **Email templates** previews every email the platform sends (rendered with sample data, HTML or plain text); the wording lives in code. **SMS templates** lists the text messages (welcome, document request, submitted, approved, not approved, status update) with an editor: insert `{userName}`, `{appId}` or `{status}`, see a live phone preview with character, segment and encoding counts, switch a template on or off, save, reset to the default, and send a test to any number. Tests go through Twilio when `TWILIO_*` is configured and are written to the API log otherwise. SMS templates aren't sent automatically by any workflow yet.
+Two tabs.
+
+**Email Templates** lists the five applicant emails admins can reword: *Application Submitted*, *Application Approved*, *Application Rejected*, *Agent Assigned* and *Documents Requested*. Search by name or subject, sort by name or last modified, and each row shows the subject, when it was last changed, and whether it's the *Default* or *Customized*. Opening one shows a rich-text editor for the subject and body, clickable variable chips (`{userName}`, `{appId}`, `{status}`, `{agentName}`, plus `{confirmationNumber}` on Submitted and `{documents}` on Documents Requested), and a live preview with sample data where merged values are highlighted. Saving checks that the subject and body aren't empty and that only that template's variables are used. The platform always adds the call-to-action button (with the link) and a privacy note below the body, so an edit can't break a link. *Revert to default* restores the built-in wording after a confirmation. SUPER and OPERATIONS admins edit; FINANCE and COMPLIANCE see the page read-only. Every save and revert is audit-logged (`admin.email_template.update` / `.revert`, with who, when and what changed). Templates live in `email_templates` and are created from the built-in defaults on first use (and by the seed). `{appId}` is a short reference like `APP-4F2A9C1E`, also shown on the applicant's application pages. Emails never include health details, SSNs or rejection reasons. The other eleven emails (security notices, password reset, agent invite, account changes, carrier updates) keep fixed wording and are listed read-only under *System emails*.
+
+**SMS Templates** lists the text messages (welcome, document request, submitted, approved, not approved, status update) with an editor: insert `{userName}`, `{appId}` or `{status}`, see a live phone preview with character, segment and encoding counts, switch a template on or off, save, reset to the default, and send a test to any number. Tests go through Twilio when `TWILIO_*` is configured and are written to the API log otherwise. SMS templates aren't sent automatically by any workflow yet.
 
 ### System settings (`/admin/settings`)
 
@@ -113,6 +117,7 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `agent_profiles` | + `npn`, `licenseExpiresAt`, `commissionRateBps` (override), `deactivatedAt`, timestamps |
 | `document_requests` | + `status` (OPEN/FULFILLED/COMPLETED/CANCELLED, backfilled), `completedAt`, `completedById` |
 | `follow_ups`, `application_notes`, `notifications` | new — agent tooling and in-app notifications |
+| `email_templates` | new — the five editable applicant emails: `key`, `name`, `subject`, `body` (HTML), `description`, `variables`, `isDefault`, who changed it last |
 | `system_settings` | new — one JSON row per section (`features`, `maintenance`, `session`), with who changed it last; missing rows fall back to defaults |
 | `blog_posts` | new — title, slug, content, status, `publishedAt`, author, featured image, SEO fields |
 | `commissions` | + `paidAt` |
@@ -140,6 +145,7 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `GET /api/notifications` · `POST /:id/read` · `POST /read-all` | signed in | In-app notifications |
 | `GET /api/admin/analytics/{users,approvals,revenue,funnel,export}` | admin | Analytics; `from`/`to` (YYYY-MM-DD), `interval=week\|month` |
 | `GET/POST /api/admin/cms/posts` · `GET/PUT/DELETE /:id` · `POST/DELETE /:id/image` | admin / SUPER·OPS | Blog CMS |
+| `GET /api/admin/email-templates` · `GET /:id` · `PUT /:id` · `POST /:id/revert` | admin / SUPER·OPS | Editable email templates (PUT takes `{ subject, body }`) |
 | `GET /api/admin/notifications/email/templates` · `GET /sms/templates` · `PUT /sms/templates/:key` · `POST /sms/templates/:key/reset` · `POST /sms/send` | admin / SUPER·OPS | Notification templates and SMS test send |
 | `GET /api/admin/settings` · `POST /api/admin/settings` | admin / SUPER | System settings (POST takes the full settings object) |
 | `GET /api/status` | public | Maintenance status for the web app's maintenance screen |

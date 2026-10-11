@@ -14,10 +14,11 @@ import { recordAuditEvent } from "../../lib/audit";
 import { decryptJson, encryptField, encryptJson } from "../../lib/fieldCrypto";
 import { HttpError } from "../../middleware/errorHandler";
 import { documentStorage } from "../../integrations/documentStorage";
-import { DOCUMENT_TYPE_LABELS } from "@insurance/shared";
+import { applicationReference, DOCUMENT_TYPE_LABELS } from "@insurance/shared";
 import { toPlanDTO } from "../plans/plans.service";
 import { notify } from "../notifications/notifications.service";
 import { findAgentForZip } from "../agent/assignment";
+import { sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
 import { sendToCarrier } from "./carrierSubmit";
 import {
   extensionForMime,
@@ -185,6 +186,14 @@ export async function createApplication(
     metadata: { agentId },
     req,
   });
+  if (app.agent) {
+    await sendTemplatedEmail("AGENT_ASSIGNED", app.user.email, app.id, {
+      userName: app.firstName,
+      appId: applicationReference(app.id),
+      status: "In progress",
+      agentName: `${app.agent.firstName} ${app.agent.lastName}`,
+    });
+  }
   return toApplicationDTO(app);
 }
 

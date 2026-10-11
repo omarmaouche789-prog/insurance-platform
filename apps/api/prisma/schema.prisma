@@ -65,6 +65,7 @@ model User {
   completedDocRequests DocumentRequest[]    @relation("DocumentRequestCompleter")
   SmsTemplate          SmsTemplate[]
   SystemSetting        SystemSetting[]
+  emailTemplateEdits   EmailTemplate[]
 
   @@index([role, isActive])
   @@index([createdAt])
@@ -553,6 +554,29 @@ model SmsTemplate {
   updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@map("sms_templates")
+}
+
+// ─── Email templates ─────────────────────────────────────────────────────────
+// One row per admin-editable email (modules/emailTemplates). Rows are created
+// from the built-in defaults on first use, so every environment has them.
+// `key` is what the code sends by; name/description/variables mirror the
+// catalog. isDefault is true while subject and body match the defaults.
+
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  subject     String
+  body        String   @db.Text
+  description String
+  variables   Json
+  isDefault   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  updatedById String?
+  updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("email_templates")
 }
 
 // ─── System settings ─────────────────────────────────────────────────────────

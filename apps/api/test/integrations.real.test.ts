@@ -177,7 +177,7 @@ describe("email.send", () => {
 
 describe("emailTemplates", () => {
   it("links to the portal and escapes names in HTML", () => {
-    const t = emailTemplates.enrollmentConfirmation({ firstName: "<Uma>", applicationId: "app-1", confirmationNumber: "REF-1" });
+    const t = emailTemplates.resubmissionOutcome({ firstName: "<Uma>", applicationId: "app-1", accepted: true, confirmationNumber: "REF-1" });
     expect(t.text).toContain(`${env.appUrl}/account/applications/app-1`);
     expect(t.text).toContain("REF-1");
     expect(t.html).toContain("&lt;Uma&gt;");
@@ -187,12 +187,8 @@ describe("emailTemplates", () => {
   it("covers every lifecycle email", () => {
     const base = { firstName: "Uma", applicationId: "a" };
     const subjects = [
-      emailTemplates.enrollmentConfirmation({ ...base, confirmationNumber: "R" }),
       emailTemplates.carrierNeedsInfo(base),
-      emailTemplates.documentRequest({ ...base, documentLabels: ["Proof of income"] }),
       emailTemplates.resubmissionOutcome({ ...base, accepted: true, confirmationNumber: "R" }),
-      emailTemplates.approval({ ...base, confirmationNumber: "R" }),
-      emailTemplates.rejectionToApplicant(base),
       emailTemplates.rejectionToAgent({ agentFirstName: "Alex", applicantName: "Uma User", applicationId: "a" }),
     ].map((t) => t.subject);
     expect(subjects.every(Boolean)).toBe(true);

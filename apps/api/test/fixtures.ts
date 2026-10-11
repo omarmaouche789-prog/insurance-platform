@@ -53,6 +53,7 @@ export function makeDbMock() {
     },
     systemSetting: { findMany: vi.fn(), findFirst: vi.fn(), upsert: vi.fn() },
     smsTemplate: { findMany: vi.fn(), findUnique: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
+    emailTemplate: { findMany: vi.fn(), findUnique: vi.fn(), createMany: vi.fn(), update: vi.fn() },
     $queryRaw: vi.fn(),
     $transaction: vi.fn(),
   };

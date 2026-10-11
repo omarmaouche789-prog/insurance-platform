@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ApplicationSummaryDTO } from "@insurance/shared";
-import { formatCents } from "@insurance/shared";
+import { applicationReference, formatCents } from "@insurance/shared";
 import { useAuth } from "../../lib/auth-context";
 import { apiFetch, describeApiError } from "../../lib/api";
 import { ApplicationStatusBadge } from "../../components/applications/ApplicationStatusBadge";
@@ -50,7 +50,7 @@ export default function AccountDashboardPage() {
                   <p className="text-xs uppercase tracking-wide text-gray-500">{a.carrierName}</p>
                   <p className="font-medium">{a.planName}</p>
                   <p className="text-sm text-gray-500">
-                    {formatCents(a.monthlyPremiumCents)}/month
+                    {formatCents(a.monthlyPremiumCents)}/month · <span className="font-mono text-xs">{applicationReference(a.id)}</span>
                     {a.carrierReference && <> · Confirmation {a.carrierReference}</>}
                   </p>
                 </div>

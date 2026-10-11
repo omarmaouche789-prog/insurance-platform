@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { cn } from "./cn";
 
-export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "accent";
+export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "accent" | "navy" | "orange";
 type Size = "sm" | "md";
 
 const VARIANTS: Record<ButtonVariant, string> = {
@@ -13,6 +13,11 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary: "border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 shadow-sm",
   danger: "bg-red-600 text-onaccent hover:bg-red-500 shadow-sm",
   ghost: "text-gray-700 hover:bg-gray-100",
+  // Brand colors for the notification template editor: navy for the primary
+  // action, orange for secondary ones. Fixed hex values (they don't flip in
+  // dark mode); dark text on orange keeps contrast readable.
+  navy: "bg-[#1e3a5f] text-onaccent hover:bg-[#274b78] shadow-sm dark:bg-[#2b5286] dark:hover:bg-[#33609b]",
+  orange: "bg-[#f59e0b] text-[#111827] hover:bg-[#d98b06] shadow-sm",
 };
 
 const SIZES: Record<Size, string> = {

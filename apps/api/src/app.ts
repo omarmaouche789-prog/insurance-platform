@@ -8,6 +8,7 @@ import { adminAgentsRouter } from "./modules/admin/agents.routes";
 import { adminAnalyticsRouter } from "./modules/admin/analytics.routes";
 import { adminApplicationsRouter } from "./modules/admin/review.routes";
 import { adminNotificationsRouter } from "./modules/admin/notifications.routes";
+import { adminEmailTemplatesRouter } from "./modules/emailTemplates/emailTemplates.routes";
 import { adminUsersRouter } from "./modules/admin/users.routes";
 import { agentRouter } from "./modules/agent/agent.routes";
 import { applicationsRouter } from "./modules/applications/applications.routes";
@@ -50,6 +51,7 @@ export function createApp() {
   app.use("/api/admin/analytics", adminAnalyticsRouter);
   app.use("/api/admin/cms", adminCmsRouter);
   app.use("/api/admin/notifications", adminNotificationsRouter);
+  app.use("/api/admin/email-templates", adminEmailTemplatesRouter);
   app.use("/api/admin/settings", adminSettingsRouter);
 
   app.use(errorHandler);

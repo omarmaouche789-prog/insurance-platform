@@ -143,10 +143,12 @@ describe("POST /api/admin/notifications/sms/send", () => {
 });
 
 describe("GET /api/admin/notifications/email/templates", () => {
-  it("renders every email template with sample data", async () => {
+  it("renders every fixed-wording system email with sample data", async () => {
     const res = await request(app).get("/api/admin/notifications/email/templates").set(FINANCE);
     expect(res.status).toBe(200);
-    expect(res.body.templates.length).toBeGreaterThanOrEqual(15);
+    // The five applicant emails moved to /api/admin/email-templates.
+    expect(res.body.templates.length).toBe(11);
+    expect(res.body.templates.map((t: { key: string }) => t.key)).not.toContain("approval");
     for (const t of res.body.templates) {
       expect(t.subject).toBeTruthy();
       expect(t.html).toContain("<p>");

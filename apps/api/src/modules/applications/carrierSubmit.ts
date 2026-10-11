@@ -1,6 +1,7 @@
 import type { Request } from "express";
 import type { Application, ApplicationDocument, Carrier, Plan, Prisma, User } from "@prisma/client";
 import type { HealthInfoDTO } from "@insurance/shared";
+import { applicationReference } from "@insurance/shared";
 import { prisma } from "../../lib/prisma";
 import { recordAuditEvent } from "../../lib/audit";
 import { decryptField, decryptJson } from "../../lib/fieldCrypto";
@@ -14,11 +15,13 @@ import {
 import { email } from "../../integrations/email";
 import { emailTemplates } from "../../integrations/emailTemplates";
 import { commissionAmountCents } from "../agent/commissions";
+import { sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
 
 type SubmittableApplication = Application & {
   plan: Plan & { carrier: Carrier };
   documents: ApplicationDocument[];
   user: Pick<User, "email">;
+  agent?: Pick<User, "firstName" | "lastName"> | null;
 };
 
 interface SendOptions {
@@ -175,13 +178,21 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
   }
 
   const who = { firstName: app.firstName, applicationId: app.id };
-  const template =
-    opts.auditAction === "application.resubmit"
-      ? emailTemplates.resubmissionOutcome({ ...who, accepted, confirmationNumber: result.reference })
-      : accepted
-        ? emailTemplates.enrollmentConfirmation({ ...who, confirmationNumber: result.reference! })
+  if (opts.auditAction === "application.submit" && accepted) {
+    await sendTemplatedEmail("APPLICATION_SUBMITTED", app.user.email, app.id, {
+      userName: app.firstName,
+      appId: applicationReference(app.id),
+      status: "Submitted",
+      agentName: app.agent ? `${app.agent.firstName} ${app.agent.lastName}` : null,
+      confirmationNumber: result.reference,
+    });
+  } else {
+    const template =
+      opts.auditAction === "application.resubmit"
+        ? emailTemplates.resubmissionOutcome({ ...who, accepted, confirmationNumber: result.reference })
         : emailTemplates.carrierNeedsInfo(who);
-  await email.send({ to: app.user.email, ...template });
+    await email.send({ to: app.user.email, ...template });
+  }
 
   await recordAuditEvent({
     actorUserId: opts.actorUserId,

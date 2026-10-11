@@ -121,11 +121,17 @@ describe("POST /api/applications", () => {
     // 10001 resolves to NY via the mock ZIP adapter.
     expect(prisma.user.findMany.mock.calls[0][0].where.agentProfile.regions).toEqual({ has: "NY" });
     expect(prisma.application.create.mock.calls[0][0].data.agentId).toBe("agent-free");
+    // The applicant is introduced to their agent.
+    expect(mailer.send).toHaveBeenCalledOnce();
+    expect(mailer.send.mock.calls[0][0]).toMatchObject({ to: "user@example.com", subject: "Meet your licensed insurance agent" });
+    expect(mailer.send.mock.calls[0][0].text).toContain("Alex Agent");
   });
 
   it("leaves the application unassigned when no agent covers the state", async () => {
+    prisma.application.create.mockImplementation(async ({ data }) => makeApplication({ ...data, agent: null, documents: [] }));
     await request(app).post("/api/applications").set(auth()).send(validBody);
     expect(prisma.application.create.mock.calls[0][0].data.agentId).toBeNull();
+    expect(mailer.send).not.toHaveBeenCalled();
   });
 
   it("400s when the plan isn't sold in the applicant's ZIP", async () => {

@@ -8,6 +8,7 @@ import type {
   ApprovalMetricsDTO,
   BulkDecisionResponseDTO,
 } from "@insurance/shared";
+import { applicationReference } from "@insurance/shared";
 import { prisma } from "../../lib/prisma";
 import { recordAuditEvent } from "../../lib/audit";
 import { HttpError } from "../../middleware/errorHandler";
@@ -17,6 +18,7 @@ import { email } from "../../integrations/email";
 import { emailTemplates } from "../../integrations/emailTemplates";
 import { CarrierSubmissionError } from "../../integrations/carrierSubmission";
 import { recordCarrierResponse } from "../applications/carrierSubmit";
+import { sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
 import { FULL_INCLUDE, type FullApplication } from "../applications/applications.service";
 import { isAwaitingReview } from "../applications/applications.validation";
 import { toAgentApplicationDTO } from "../agent/agent.service";
@@ -179,9 +181,11 @@ export async function approveApplication(
       meta: known?.meta,
     });
   }
-  await email.send({
-    to: app.user.email,
-    ...emailTemplates.approval({ firstName: app.firstName, applicationId: id, confirmationNumber: app.carrierReference }),
+  await sendTemplatedEmail("APPLICATION_APPROVED", app.user.email, id, {
+    userName: app.firstName,
+    appId: applicationReference(id),
+    status: "Approved",
+    agentName: app.agent ? `${app.agent.firstName} ${app.agent.lastName}` : null,
   });
 
   await recordAuditEvent({
@@ -217,7 +221,12 @@ export async function rejectApplication(
       }),
     });
   }
-  await email.send({ to: app.user.email, ...emailTemplates.rejectionToApplicant({ firstName: app.firstName, applicationId: id }) });
+  await sendTemplatedEmail("APPLICATION_REJECTED", app.user.email, id, {
+    userName: app.firstName,
+    appId: applicationReference(id),
+    status: "Not approved",
+    agentName: app.agent ? `${app.agent.firstName} ${app.agent.lastName}` : null,
+  });
 
   await recordAuditEvent({
     actorUserId: adminId,

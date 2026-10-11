@@ -1,6 +1,8 @@
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import type { MetalTier, PlanType, Prisma } from "@prisma/client";
+import { EMAIL_TEMPLATE_KEYS } from "@insurance/shared";
+import { EMAIL_TEMPLATE_CATALOG } from "../src/modules/emailTemplates/catalog";
 
 const prisma = new PrismaClient();
 const PASSWORD_HASH_ROUNDS = 12;
@@ -215,6 +217,20 @@ function seedTestAccount(account: Omit<Prisma.UserCreateInput, "passwordHash">, 
   });
 }
 
+// The five admin-editable emails, with their default wording. Existing rows
+// (and any admin edits) are left alone. The API also creates missing rows on
+// first use, so production doesn't depend on this.
+async function seedEmailTemplates(): Promise<number> {
+  const { count } = await prisma.emailTemplate.createMany({
+    data: EMAIL_TEMPLATE_KEYS.map((key) => {
+      const d = EMAIL_TEMPLATE_CATALOG[key];
+      return { key, name: d.name, description: d.description, variables: d.variables, subject: d.subject, body: d.body, isDefault: true };
+    }),
+    skipDuplicates: true,
+  });
+  return count;
+}
+
 async function main() {
   if (process.env.NODE_ENV === "production") {
     throw new Error("Refusing to seed: the seed creates test accounts with the password '123'.");
@@ -226,6 +242,7 @@ async function main() {
   const user = await seedTestAccount(TEST_ACCOUNTS.user, passwordHash);
 
   const planCount = await seedPlanCatalog();
+  const emailTemplateCount = await seedEmailTemplates();
 
   if (process.env.SEED_DEMO_DATA === "true") {
     const demoUsers = await seedDemoHistory([agent.id], admin.id, passwordHash);
@@ -233,6 +250,7 @@ async function main() {
   }
 
   console.log(`Seeded ${planCount} plans across ZIPs: ${SEED_ZIPS.join(", ")}`);
+  console.log(`Email templates: ${emailTemplateCount} created (${EMAIL_TEMPLATE_KEYS.length - emailTemplateCount} already existed)`);
   console.log(`Test logins (password ${TEST_PASSWORD}): ${admin.email} · ${agent.email} · ${user.email}`);
 }
 

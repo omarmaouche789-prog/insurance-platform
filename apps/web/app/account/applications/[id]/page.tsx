@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { ApplicationDTO, DocumentType } from "@insurance/shared";
-import { DOCUMENT_TYPE_LABELS, formatCents } from "@insurance/shared";
+import { applicationReference, DOCUMENT_TYPE_LABELS, formatCents } from "@insurance/shared";
 import { useAuth } from "../../../../lib/auth-context";
 import { apiFetch, describeApiError } from "../../../../lib/api";
 import { ApplicationStatusBadge } from "../../../../components/applications/ApplicationStatusBadge";
@@ -42,7 +42,9 @@ export default function ApplicationStatusPage() {
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500">{app.plan.carrier.name}</p>
           <h1 className="text-xl font-semibold">{app.plan.name}</h1>
-          <p className="text-sm text-gray-600">{formatCents(app.plan.monthlyPremiumCents)}/month</p>
+          <p className="text-sm text-gray-600">
+            {formatCents(app.plan.monthlyPremiumCents)}/month · <span className="font-mono text-xs">{applicationReference(app.id)}</span>
+          </p>
         </div>
         <ApplicationStatusBadge status={app.status} submissionStatus={app.submissionStatus} />
       </div>

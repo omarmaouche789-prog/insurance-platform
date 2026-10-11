@@ -163,19 +163,16 @@ export async function sendTestSms(
   };
 }
 
-// ─── Email (read-only previews) ──────────────────────────────────────────────
-// Email wording is code (integrations/emailTemplates.ts). This renders each
-// template with sample data so admins can see exactly what users receive.
+// ─── System emails (read-only previews) ──────────────────────────────────────
+// Fixed-wording emails (integrations/emailTemplates.ts): security notices,
+// account changes, carrier updates. The admin-editable applicant emails are
+// in modules/emailTemplates. This renders each one with sample data.
 
 const SAMPLE = { firstName: "Uma", applicationId: "sample-application-id", token: "sample-token" };
 
-const EMAIL_PREVIEWS: Array<Omit<EmailTemplatePreviewDTO, "subject" | "text" | "html"> & { render: () => ReturnType<typeof emailTemplates.approval> }> = [
-  { key: "enrollmentConfirmation", name: "Enrollment confirmation", audience: "Applicant", description: "The carrier accepted the application.", render: () => emailTemplates.enrollmentConfirmation({ ...SAMPLE, confirmationNumber: "BP-1A2B3C" }) },
+const EMAIL_PREVIEWS: Array<Omit<EmailTemplatePreviewDTO, "subject" | "text" | "html"> & { render: () => ReturnType<typeof emailTemplates.carrierNeedsInfo> }> = [
   { key: "carrierNeedsInfo", name: "Carrier needs information", audience: "Applicant", description: "The carrier rejected the submission.", render: () => emailTemplates.carrierNeedsInfo(SAMPLE) },
-  { key: "documentRequest", name: "Document request", audience: "Applicant", description: "An agent requested documents.", render: () => emailTemplates.documentRequest({ ...SAMPLE, documentLabels: ["Proof of income"] }) },
   { key: "resubmissionOutcome", name: "Resubmission outcome", audience: "Applicant", description: "An agent resubmitted to the carrier.", render: () => emailTemplates.resubmissionOutcome({ ...SAMPLE, accepted: true, confirmationNumber: "BP-1A2B3C" }) },
-  { key: "approval", name: "Application approved", audience: "Applicant", description: "An admin approved the application.", render: () => emailTemplates.approval({ ...SAMPLE, confirmationNumber: "BP-1A2B3C" }) },
-  { key: "rejectionToApplicant", name: "Application not approved", audience: "Applicant", description: "An admin rejected the application.", render: () => emailTemplates.rejectionToApplicant(SAMPLE) },
   { key: "rejectionToAgent", name: "Rejection (agent copy)", audience: "Agent", description: "Tells the assigned agent about a rejection.", render: () => emailTemplates.rejectionToAgent({ agentFirstName: "Alex", applicantName: "Uma User", applicationId: SAMPLE.applicationId }) },
   { key: "agentInvite", name: "Agent invite", audience: "Agent", description: "New agent account: set a password.", render: () => emailTemplates.agentInvite({ ...SAMPLE, firstName: "Alex", expiresInHours: 72 }) },
   { key: "passwordReset", name: "Password reset", audience: "Any user", description: "Self-service or admin-issued reset link.", render: () => emailTemplates.passwordReset({ ...SAMPLE, expiresInHours: 1, byAdmin: false }) },

@@ -27,15 +27,15 @@ export default function AdminNotificationsPage() {
 
   return (
     <PageContainer wide>
-      <PageHeader title="Notifications" description="The emails and text messages the platform sends to applicants, agents and staff." />
+      <PageHeader title="Notifications" description="Edit the emails and text messages the platform sends to applicants, agents and staff." />
       <div className="mb-5">
         <FilterTabs<Tab>
           label="Notification channel"
           value={tab}
           onChange={changeTab}
           tabs={[
-            { value: "email", label: "Email templates" },
-            { value: "sms", label: "SMS templates" },
+            { value: "email", label: "Email Templates" },
+            { value: "sms", label: "SMS Templates" },
           ]}
         />
       </div>

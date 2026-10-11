@@ -9,18 +9,17 @@ import type {
   RequestDocumentsRequestDTO,
   SubmissionStatus,
 } from "@insurance/shared";
-import { APPLICATION_STATUSES, COMMISSION_STATUSES, DOCUMENT_TYPE_LABELS } from "@insurance/shared";
+import { APPLICATION_STATUSES, applicationReference, COMMISSION_STATUSES, DOCUMENT_TYPE_LABELS } from "@insurance/shared";
 import { prisma } from "../../lib/prisma";
 import { recordAuditEvent } from "../../lib/audit";
 import { HttpError } from "../../middleware/errorHandler";
 import { documentStorage } from "../../integrations/documentStorage";
-import { email } from "../../integrations/email";
-import { emailTemplates } from "../../integrations/emailTemplates";
 import { FULL_INCLUDE, toApplicationDTO, type FullApplication } from "../applications/applications.service";
 import { sendToCarrier } from "../applications/carrierSubmit";
 import { resubmitBlocker } from "../applications/applications.validation";
 import { renderApplicationPdf } from "./applicationPdf";
 import { notify } from "../notifications/notifications.service";
+import { sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
 
 export interface AgentApplicationFilters {
   statuses?: ApplicationStatus[];
@@ -135,13 +134,12 @@ export async function requestDocuments(
     data: { applicationId: id, agentId, message: input.message, requestedTypes: input.requestedTypes },
   });
   // The message itself stays in the portal; email only says there's something to see.
-  await email.send({
-    to: app.user.email,
-    ...emailTemplates.documentRequest({
-      firstName: app.firstName,
-      applicationId: id,
-      documentLabels: input.requestedTypes.map((t) => DOCUMENT_TYPE_LABELS[t]),
-    }),
+  await sendTemplatedEmail("DOCUMENTS_REQUESTED", app.user.email, id, {
+    userName: app.firstName,
+    appId: applicationReference(id),
+    status: "Documents requested",
+    agentName: app.agent ? `${app.agent.firstName} ${app.agent.lastName}` : null,
+    documents: input.requestedTypes.map((t) => DOCUMENT_TYPE_LABELS[t]).join(", "),
   });
   await notify(app.userId, {
     type: "document.requested",
