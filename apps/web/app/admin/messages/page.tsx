@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Send, Search, MessageSquare, User, Clock, Archive } from "lucide-react";
 import { PageContainer, PageHeader } from "../../../components/ui/PageHeader";
 import { Card, CardBody, CardHeader } from "../../../components/ui/Card";
@@ -9,6 +9,8 @@ import { Field, Input, Textarea, Select } from "../../../components/ui/Field";
 import { useAuth } from "../../../lib/auth-context";
 import { useToast } from "../../../components/ui/Toast";
 import { formatDateTime } from "../../../lib/format";
+import { useApiQuery } from "../../../lib/use-api";
+import type { AdminAgentDTO, AdminAgentListResponseDTO } from "@insurance/shared";
 
 interface Message {
   id: string;
@@ -28,11 +30,6 @@ interface Draft {
   body: string;
 }
 
-const SAMPLE_AGENTS = [
-  { id: "agent1", name: "John Smith" },
-  { id: "agent2", name: "Sarah Johnson" },
-  { id: "agent3", name: "Mike Davis" },
-];
 
 export default function AdminMessagesPage() {
   const { user, accessToken } = useAuth();
@@ -44,6 +41,20 @@ export default function AdminMessagesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sending, setSending] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
+  const [agentSearch, setAgentSearch] = useState("");
+
+  // Real, active agents from the database, loaded when the page opens.
+  const agentsQuery = useApiQuery<AdminAgentListResponseDTO>("/api/admin/agents?status=active", "Couldn't load agents");
+  const agents = useMemo(
+    () => [...(agentsQuery.data?.agents ?? [])].sort((a, b) => agentName(a).localeCompare(agentName(b))),
+    [agentsQuery.data],
+  );
+  const matchingAgents = useMemo(() => {
+    const q = agentSearch.trim().toLowerCase();
+    if (!q) return agents;
+    // Keep the chosen agent listed even when the search no longer matches it.
+    return agents.filter((a) => agentName(a).toLowerCase().includes(q) || a.id === draft.to);
+  }, [agents, agentSearch, draft.to]);
 
   // Load messages from localStorage
   useEffect(() => {
@@ -72,11 +83,11 @@ export default function AdminMessagesPage() {
 
     setSending(true);
     try {
-      const agent = SAMPLE_AGENTS.find((a) => a.id === draft.to);
+      const agent = agents.find((a) => a.id === draft.to);
       const newMessage: Message = {
         id: `msg-${Date.now()}`,
         to: draft.to,
-        toName: agent?.name || "Unknown",
+        toName: agent ? agentName(agent) : "Unknown",
         subject: draft.subject,
         body: draft.body,
         sentAt: new Date().toISOString(),
@@ -203,18 +214,61 @@ export default function AdminMessagesPage() {
                 </div>
               ) : (
                 <form onSubmit={handleSendMessage} className="space-y-4">
-                  <Field label="To" required>
-                    <Select
-                      value={draft.to}
-                      onChange={(e) => setDraft((prev) => ({ ...prev, to: e.target.value }))}
-                    >
-                      <option value="">Select an agent...</option>
-                      {SAMPLE_AGENTS.map((agent) => (
-                        <option key={agent.id} value={agent.id}>
-                          {agent.name}
+                  <Field
+                    label="To"
+                    htmlFor="message-to"
+                    required
+                    error={agentsQuery.error}
+                    hint={
+                      agentsQuery.data
+                        ? agentSearch.trim()
+                          ? `${matchingAgents.length} of ${agents.length} agents match`
+                          : `${agents.length} active agent${agents.length === 1 ? "" : "s"}`
+                        : undefined
+                    }
+                  >
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden />
+                        <Input
+                          type="search"
+                          placeholder="Search agents by name"
+                          aria-label="Search agents by name"
+                          value={agentSearch}
+                          onChange={(e) => setAgentSearch(e.target.value)}
+                          disabled={!agentsQuery.data}
+                          className="pl-9"
+                        />
+                      </div>
+                      <Select
+                        id="message-to"
+                        value={draft.to}
+                        onChange={(e) => setDraft((prev) => ({ ...prev, to: e.target.value }))}
+                        disabled={!agentsQuery.data || agents.length === 0}
+                      >
+                        <option value="">
+                          {agentsQuery.loading && !agentsQuery.data
+                            ? "Loading agents…"
+                            : agentsQuery.error
+                              ? "Agents couldn't be loaded"
+                              : agents.length === 0
+                                ? "No active agents"
+                                : matchingAgents.length === 0
+                                  ? "No agents match your search"
+                                  : "Select an agent..."}
                         </option>
-                      ))}
-                    </Select>
+                        {matchingAgents.map((agent) => (
+                          <option key={agent.id} value={agent.id}>
+                            {agentName(agent)}
+                          </option>
+                        ))}
+                      </Select>
+                      {agentsQuery.error && (
+                        <button type="button" onClick={agentsQuery.reload} className="text-xs font-medium text-primary-navy hover:underline dark:text-[#9fbbe0]">
+                          Try again
+                        </button>
+                      )}
+                    </div>
                   </Field>
 
                   <Field label="Subject" required>
@@ -308,7 +362,7 @@ export default function AdminMessagesPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Agents</span>
-                <span className="font-semibold text-gray-900">{SAMPLE_AGENTS.length}</span>
+                <span className="font-semibold text-gray-900">{agentsQuery.data ? agents.length : "—"}</span>
               </div>
             </CardBody>
           </Card>
@@ -316,4 +370,8 @@ export default function AdminMessagesPage() {
       </div>
     </PageContainer>
   );
+}
+
+function agentName(a: Pick<AdminAgentDTO, "firstName" | "lastName">): string {
+  return `${a.firstName} ${a.lastName}`.trim();
 }
