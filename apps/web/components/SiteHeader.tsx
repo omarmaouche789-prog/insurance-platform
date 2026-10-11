@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { portalPathForRole } from "@insurance/shared";
 import { useAuth } from "../lib/auth-context";
+import { useSiteSettings } from "../lib/site-settings";
 import { AccountNav } from "./account/AccountNav";
 import { NotificationBell } from "./NotificationBell";
 import { BrandMark, UserMenu } from "./PortalHeader";
@@ -16,6 +17,7 @@ const link = "rounded-lg px-2.5 py-1.5 text-gray-600 hover:bg-gray-100 hover:tex
 // plans look like being signed out.
 export function SiteHeader() {
   const { user, loading } = useAuth();
+  const { features } = useSiteSettings().status;
 
   return (
     <div className="sticky top-0 z-30">
@@ -31,9 +33,11 @@ export function SiteHeader() {
                 <Link href="/plans" className={link}>
                   Find plans
                 </Link>
-                <Link href="/blog" className={link}>
-                  Learn
-                </Link>
+                {features.blog && (
+                  <Link href="/blog" className={link}>
+                    Learn
+                  </Link>
+                )}
               </>
             )}
             {user ? (

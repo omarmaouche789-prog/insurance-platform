@@ -66,7 +66,7 @@ describe("self-only guard", () => {
     prisma.user.findUnique.mockResolvedValue(makeUser({ passwordHash }));
     const res = await request(app).get(`/api/users/${id}/2fa`).set(auth);
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ enabled: false, enabledAt: null, backupCodesRemaining: 0, setupAvailable: true });
+    expect(res.body).toEqual({ enabled: false, enabledAt: null, backupCodesRemaining: 0, required: false });
   });
 });
 

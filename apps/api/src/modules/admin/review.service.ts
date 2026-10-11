@@ -14,11 +14,10 @@ import { recordAuditEvent } from "../../lib/audit";
 import { HttpError } from "../../middleware/errorHandler";
 import { carrierSubmission } from "../../integrations/carrierSubmission";
 import { documentStorage } from "../../integrations/documentStorage";
-import { email } from "../../integrations/email";
 import { emailTemplates } from "../../integrations/emailTemplates";
 import { CarrierSubmissionError } from "../../integrations/carrierSubmission";
 import { recordCarrierResponse } from "../applications/carrierSubmit";
-import { sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
+import { sendNotificationEmail, sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
 import { FULL_INCLUDE, type FullApplication } from "../applications/applications.service";
 import { isAwaitingReview } from "../applications/applications.validation";
 import { toAgentApplicationDTO } from "../agent/agent.service";
@@ -212,14 +211,17 @@ export async function rejectApplication(
 
   // The reason stays in the portal; emails only say there's an update.
   if (app.agent) {
-    await email.send({
-      to: app.agent.email,
-      ...emailTemplates.rejectionToAgent({
-        agentFirstName: app.agent.firstName,
-        applicantName: `${app.firstName} ${app.lastName}`,
-        applicationId: id,
-      }),
-    });
+    await sendNotificationEmail(
+      {
+        to: app.agent.email,
+        ...emailTemplates.rejectionToAgent({
+          agentFirstName: app.agent.firstName,
+          applicantName: `${app.firstName} ${app.lastName}`,
+          applicationId: id,
+        }),
+      },
+      "rejection (agent copy)",
+    );
   }
   await sendTemplatedEmail("APPLICATION_REJECTED", app.user.email, id, {
     userName: app.firstName,

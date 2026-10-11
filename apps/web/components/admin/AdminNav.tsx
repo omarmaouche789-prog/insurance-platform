@@ -1,6 +1,7 @@
 "use client";
 
 import { BarChart3, Briefcase, FileCheck2, Mail, MessageSquare, Newspaper, Settings, ShieldCheck, Users } from "lucide-react";
+import { useSiteSettings } from "../../lib/site-settings";
 import { PortalNav, type PortalLink } from "../PortalNav";
 
 const LINKS: PortalLink[] = [
@@ -12,10 +13,12 @@ const LINKS: PortalLink[] = [
   { href: "/admin/messages", label: "Messages", icon: MessageSquare },
   { href: "/admin/notifications", label: "Notifications", icon: Mail },
   { href: "/admin/settings", label: "Settings", icon: Settings },
-  { href: "/admin/advanced-settings", label: "Advanced", icon: Settings },
   { href: "/admin/security", label: "Security", icon: ShieldCheck },
 ];
 
+// Sections switched off in System settings drop out of the menu.
 export function AdminNav() {
-  return <PortalNav links={LINKS} label="Admin" />;
+  const { features } = useSiteSettings().status;
+  const links = LINKS.filter((l) => (l.href !== "/admin/analytics" || features.analytics) && (l.href !== "/admin/cms" || features.blog));
+  return <PortalNav links={links} label="Admin" />;
 }

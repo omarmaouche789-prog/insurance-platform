@@ -6,17 +6,29 @@ import { useRouter } from "next/navigation";
 import { ChevronDown, LayoutDashboard, LogOut, ShieldCheck, ShieldPlus } from "lucide-react";
 import { portalPathForRole } from "@insurance/shared";
 import { useAuth } from "../lib/auth-context";
+import { useSiteSettings } from "../lib/site-settings";
 import { Avatar } from "./ui/Avatar";
 import { NotificationBell } from "./NotificationBell";
 import { ThemeToggle } from "./ThemeToggle";
 
+// Platform name and logo from System Settings → General. Falls back to the
+// built-in mark when there's no logo or it fails to load.
 export function BrandMark() {
+  const { platformName, logoUrl } = useSiteSettings().status.general;
+  const [broken, setBroken] = useState<string | null>(null);
+  const showLogo = Boolean(logoUrl) && broken !== logoUrl;
   return (
     <span className="inline-flex items-center gap-2 font-semibold tracking-tight text-gray-900">
-      <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-navy text-onaccent">
-        <ShieldPlus className="h-4 w-4" aria-hidden />
-      </span>
-      <span className="hidden sm:inline">Insurance Marketplace</span>
+      {showLogo ? (
+        // Admin-supplied URL on any host, so next/image's allow-list doesn't fit.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logoUrl} alt="" className="h-7 max-w-[120px] object-contain" onError={() => setBroken(logoUrl)} />
+      ) : (
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary-navy text-onaccent">
+          <ShieldPlus className="h-4 w-4" aria-hidden />
+        </span>
+      )}
+      <span className="hidden sm:inline">{platformName}</span>
     </span>
   );
 }

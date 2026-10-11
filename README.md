@@ -55,11 +55,18 @@ Two tabs.
 
 ### System settings (`/admin/settings`)
 
-Every admin can view; only SUPER admins can change. Saved in the `system_settings` table, audit-logged as `admin.settings.update` with what changed, and picked up by every API instance within about 10 seconds.
+Four tabs. Every admin can view; only SUPER admins can change anything (OPERATIONS and the other sub-roles see it read-only). Settings live in `system_settings`, one row per setting (`section` + `key` + JSON `value`, who changed it and when); a missing row means the default. Every change is audit-logged (`admin.settings.update`, or `admin.settings.feature_toggle` for switches) with the before and after values, and every API instance picks it up within about 10 seconds; open browser tabs within a minute.
 
-- **Feature toggles.** *Two-factor authentication* (on by default): turning it off stops new 2FA enrollments, but accounts that already have 2FA are still asked for a code. *Plan recommendations*, *SMS notifications* and *HIPAA compliance mode* are saved but don't change anything yet. The page labels them "Not active yet", since the recommendation engine, automatic SMS and the HIPAA mode's rules don't exist yet.
-- **Maintenance mode.** When on, the API answers every non-admin request with `503` (`code: "MAINTENANCE"`, `Retry-After`). The web app shows the admin's message full-screen to everyone but admins, and admins see a banner instead. Sign-in, password reset, `/api/health` and `/api/status` stay open, so an admin can always get in and turn it off. Turning it on asks for confirmation.
-- **Sessions.** *Session timeout* (default 30 minutes, 5–1440) is an idle timeout: a session that hasn't been refreshed for that long has to sign in again. *Max login attempts* (default 5, 3–20) is how many wrong passwords or 2FA codes an account gets in 15 minutes before it's locked for the rest of that window.
+- **General.** Company name, platform name, support email, support phone (all required, validated) and an optional logo URL (https, with a live header preview). The platform name and logo show in every header, the company and support details in the public site footer and on the maintenance screen.
+- **Feature toggles** (save instantly, with a confirmation for 2FA and email):
+  - *Two-Factor Authentication* (off by default): **requires** 2FA for admins and agents. Anyone without it is sent to their Security page and the API refuses their other requests (`403`, `code: "TWO_FACTOR_REQUIRED"`) until they set it up; while required they can't turn it off. Applicants can always opt in.
+  - *SMS Notifications*: saved for when SMS is wired to events; nothing sends texts automatically yet.
+  - *Email Notifications* (on): off stops application-update emails (submitted, approved, rejected, agent assigned, documents requested, carrier updates). Security and account emails (password reset, 2FA notices, agent invites, suspensions) always send.
+  - *Analytics Dashboard* (on): off hides it from the menu and the page, and its API answers `403`. The admin home then opens the review queue.
+  - *Blog CMS* (on): off hides the public blog (`/blog` and `/api/blog/*` answer `404`), the "Learn" link and the blog editor.
+  - The same tab keeps *Sign-in & sessions*: idle session timeout (default 30 minutes, 5–1440) and max login attempts before a 15-minute lockout (default 5, 3–20).
+- **Maintenance mode.** A switch (with a confirmation before it turns on) and the message, with a live preview. While on, the API answers every non-admin request with `503` (`code: "MAINTENANCE"`, `Retry-After: 120`) and the web app shows the message full-screen with the support contacts and a *Try again* button that unlocks after 2 minutes (the page also re-checks every minute and lifts itself when maintenance ends). Admins keep full access and see a banner; sign-in and password reset stay open. Default message: "The system is under maintenance. Please try again later."
+- **Localization & timezone.** System timezone (UTC, EST, CST, MST, PST, GMT, CET, IST, JST, AEST; daylight saving handled), date format (MM/DD/YYYY, DD/MM/YYYY, YYYY-MM-DD) and time format (12- or 24-hour). Dates and times across the web app use them. The language is English; Arabic is listed as coming soon.
 
 ### Blog CMS (`/admin/cms`)
 
@@ -118,7 +125,7 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `document_requests` | + `status` (OPEN/FULFILLED/COMPLETED/CANCELLED, backfilled), `completedAt`, `completedById` |
 | `follow_ups`, `application_notes`, `notifications` | new — agent tooling and in-app notifications |
 | `email_templates` | new — the five editable applicant emails: `key`, `name`, `subject`, `body` (HTML), `description`, `variables`, `isDefault`, who changed it last |
-| `system_settings` | new — one JSON row per section (`features`, `maintenance`, `session`), with who changed it last; missing rows fall back to defaults |
+| `system_settings` | new — one row per setting: `section`, `key`, JSON `value`, `createdAt`/`updatedAt`, who changed it; missing rows fall back to defaults |
 | `blog_posts` | new — title, slug, content, status, `publishedAt`, author, featured image, SEO fields |
 | `commissions` | + `paidAt` |
 
@@ -147,8 +154,9 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `GET/POST /api/admin/cms/posts` · `GET/PUT/DELETE /:id` · `POST/DELETE /:id/image` | admin / SUPER·OPS | Blog CMS |
 | `GET /api/admin/email-templates` · `GET /:id` · `PUT /:id` · `POST /:id/revert` | admin / SUPER·OPS | Editable email templates (PUT takes `{ subject, body }`) |
 | `GET /api/admin/notifications/email/templates` · `GET /sms/templates` · `PUT /sms/templates/:key` · `POST /sms/templates/:key/reset` · `POST /sms/send` | admin / SUPER·OPS | Notification templates and SMS test send |
-| `GET /api/admin/settings` · `POST /api/admin/settings` | admin / SUPER | System settings (POST takes the full settings object) |
-| `GET /api/status` | public | Maintenance status for the web app's maintenance screen |
+| `GET /api/admin/settings` · `GET /:section` | admin | All settings, or one section, with who changed them last |
+| `PUT /api/admin/settings/:section` · `PUT /:section/:key` (`{ value }`) · `POST /features/:feature/toggle` (`{ enabled? }`) | SUPER | Save a whole section (e.g. `general`), one setting, or flip a feature |
+| `GET /api/status` | public | Branding, localization, feature visibility and maintenance status for the web app |
 | `GET /api/blog/posts` · `GET /posts/:slug` · `GET /images/:id` | public | Published posts |
 
 Errors are JSON `{ "error": "…" }` with the usual status codes: 400 validation (with `details.fieldErrors`), 401, 403, 404, 409 conflict/state, 429 rate limited (with `Retry-After`), 503 maintenance mode (`code: "MAINTENANCE"`).

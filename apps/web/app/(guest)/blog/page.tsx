@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { BookOpen, Clock } from "lucide-react";
 import type { PublicBlogPostListResponseDTO } from "@insurance/shared";
 import { formatDate } from "../../../lib/format";
@@ -23,6 +24,8 @@ export default async function BlogIndexPage({ searchParams }: { searchParams: { 
   } catch {
     failed = true;
   }
+  // The API answers 404 while the blog is switched off in System settings.
+  if (!failed && !data) notFound();
   const pages = data ? Math.max(1, Math.ceil(data.total / PAGE_SIZE)) : 1;
 
   return (

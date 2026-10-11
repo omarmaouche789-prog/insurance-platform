@@ -16,6 +16,7 @@ import { recordAuditEvent } from "../../lib/audit";
 import { HttpError } from "../../middleware/errorHandler";
 import { email, type EmailMessage } from "../../integrations/email";
 import { EMAIL_TEMPLATE_CATALOG } from "./catalog";
+import { getSystemSettings } from "../settings/settings.service";
 
 // ─── HTML handling ───────────────────────────────────────────────────────────
 
@@ -240,12 +241,27 @@ export function renderEmailTemplate(
 
 // Sends an editable template. Falls back to the built-in wording if the
 // database can't be read, and like email.send it never throws.
+// Application-update emails to applicants and agents. Skipped while System
+// Settings → "Email Notifications" is off; security and account emails
+// (password reset, 2FA notices, invites) don't go through here and always send.
+export async function sendNotificationEmail(message: EmailMessage, label: string): Promise<boolean> {
+  if (!(await getSystemSettings()).features.emailNotifications) {
+    console.info(`[email] "${label}" not sent: email notifications are turned off in System settings`);
+    return false;
+  }
+  return email.send(message);
+}
+
 export async function sendTemplatedEmail(
   key: EmailTemplateKey,
   to: string,
   applicationId: string,
   values: EmailTemplateValues,
 ): Promise<boolean> {
+  if (!(await getSystemSettings()).features.emailNotifications) {
+    console.info(`[email] ${key} not sent: email notifications are turned off in System settings`);
+    return false;
+  }
   let source: { subject: string; body: string } = EMAIL_TEMPLATE_CATALOG[key];
   try {
     const row = await prisma.emailTemplate.findUnique({ where: { key }, select: { subject: true, body: true } });

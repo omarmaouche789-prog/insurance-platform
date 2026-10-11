@@ -584,12 +584,19 @@ model EmailTemplate {
 // One row per settings section ("features", "maintenance", "session"),
 // value is JSON. Missing rows/fields fall back to SYSTEM_SETTINGS_DEFAULTS
 // in shared, so new settings need no migration or seed.
+// One row per setting: section ("general" | "features" | "maintenance" |
+// "localization" | "session") + key. Missing rows mean the default applies
+// (SYSTEM_SETTINGS_DEFAULTS in shared). Read through getSystemSettings().
 model SystemSetting {
-  key         String   @id
+  id          String   @id @default(uuid())
+  section     String
+  key         String
   value       Json
+  createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   updatedById String?
   updatedBy   User?    @relation(fields: [updatedById], references: [id], onDelete: SetNull)
 
+  @@unique([section, key])
   @@map("system_settings")
 }

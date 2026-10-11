@@ -5,6 +5,7 @@ import { AuthProvider } from "../lib/auth-context";
 import { THEME_INIT_SCRIPT } from "../lib/theme";
 import { ToastProvider } from "../components/ui/Toast";
 import { MaintenanceGate } from "../components/MaintenanceGate";
+import { SiteSettingsProvider } from "../lib/site-settings";
 
 export const metadata: Metadata = {
   // Resolves relative Open Graph image URLs (blog featured images).
@@ -30,9 +31,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       </head>
       <body className="min-h-screen bg-gray-50 font-sans text-gray-900">
         <AuthProvider>
-          <ToastProvider>
-            <MaintenanceGate>{children}</MaintenanceGate>
-          </ToastProvider>
+          <SiteSettingsProvider>
+            <ToastProvider>
+              <MaintenanceGate>{children}</MaintenanceGate>
+            </ToastProvider>
+          </SiteSettingsProvider>
         </AuthProvider>
       </body>
     </html>

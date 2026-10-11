@@ -179,35 +179,41 @@ export function SecuritySettings() {
                   >
                     New backup codes
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="text-red-700 hover:bg-red-50"
-                    icon={<ShieldOff className="h-4 w-4" />}
-                    onClick={() => {
-                      resetForms();
-                      setDisableOpen(true);
-                    }}
-                  >
-                    Turn off
-                  </Button>
+                  {s.required ? (
+                    <p className="self-center text-xs text-gray-500">Required for your role, so it can&apos;t be turned off.</p>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      className="text-red-700 hover:bg-red-50"
+                      icon={<ShieldOff className="h-4 w-4" />}
+                      onClick={() => {
+                        resetForms();
+                        setDisableOpen(true);
+                      }}
+                    >
+                      Turn off
+                    </Button>
+                  )}
                 </div>
               </div>
             ) : (
+              <div className="space-y-4">
+              {s.required && (
+                <Alert tone="amber">
+                  <strong className="font-semibold">Two-factor authentication is required.</strong> Your administrator requires it for
+                  admins and agents. Set it up to continue using the portal.
+                </Alert>
+              )}
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="max-w-xl text-sm text-gray-600">
                   {user?.role === "USER"
                     ? "Your applications contain sensitive personal and health information. Two-factor authentication keeps them safe even if your password leaks."
                     : "Your account can see applicants' personal and health information. We strongly recommend two-factor authentication."}
                 </p>
-                {s?.setupAvailable === false ? (
-                  <p className="max-w-xs rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                    Two-factor setup is currently turned off by your administrator.
-                  </p>
-                ) : (
-                  <Button variant="primary" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setSetupOpen(true)}>
-                    Set up 2FA
-                  </Button>
-                )}
+                <Button variant="primary" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setSetupOpen(true)}>
+                  Set up 2FA
+                </Button>
+              </div>
               </div>
             )}
           </CardBody>

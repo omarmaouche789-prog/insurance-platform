@@ -8,6 +8,7 @@ import { DOCUMENT_TYPE_LABELS, formatCents } from "@insurance/shared";
 import { useAuth } from "../../../../lib/auth-context";
 import { apiFetch, describeApiError } from "../../../../lib/api";
 import { ApplicationStatusBadge } from "../../../../components/applications/ApplicationStatusBadge";
+import { formatDateTime } from "../../../../lib/format";
 
 function Confirmation() {
   const id = useSearchParams().get("id");
@@ -66,7 +67,7 @@ function Confirmation() {
           ["Monthly premium", formatCents(app.plan.monthlyPremiumCents)],
           ["Applicant", `${app.personal.firstName} ${app.personal.lastName}`],
           ["Documents", app.documents.map((d) => DOCUMENT_TYPE_LABELS[d.type]).join(", ")],
-          ["Submitted", app.submittedAt ? new Date(app.submittedAt).toLocaleString() : "—"],
+          ["Submitted", app.submittedAt ? formatDateTime(app.submittedAt) : "—"],
         ].map(([label, value]) => (
           <div key={label as string} className="flex justify-between gap-4 px-4 py-2">
             <dt className="text-gray-600">{label}</dt>

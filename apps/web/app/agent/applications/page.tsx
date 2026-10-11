@@ -8,6 +8,7 @@ import { useAuth } from "../../../lib/auth-context";
 import { apiFetch, describeApiError } from "../../../lib/api";
 import { ApplicationStatusBadge } from "../../../components/applications/ApplicationStatusBadge";
 import { CommissionWidget } from "../../../components/agent/CommissionWidget";
+import { formatDate } from "../../../lib/format";
 
 const TABS: Array<{ label: string; status: ApplicationStatus | null }> = [
   { label: "All", status: null },
@@ -164,7 +165,7 @@ export default function AgentApplicationsPage() {
                         )}
                       </div>
                     </td>
-                    <td className="py-2.5 text-gray-500">{new Date(a.updatedAt).toLocaleDateString()}</td>
+                    <td className="py-2.5 text-gray-500">{formatDate(a.updatedAt)}</td>
                   </tr>
                 ))}
               </tbody>

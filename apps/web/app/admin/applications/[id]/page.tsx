@@ -11,6 +11,7 @@ import { downloadWithAuth } from "../../../../lib/download";
 import { ApplicationStatusBadge } from "../../../../components/applications/ApplicationStatusBadge";
 import { formatBytes } from "../../../../components/applications/DocumentUploadRow";
 import { NotesPanel } from "../../../../components/agent/NotesPanel";
+import { formatDate, formatDateTime } from "../../../../lib/format";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -109,7 +110,7 @@ export default function AdminApplicationDetailPage() {
           }`}
         >
           <strong>{app.review.decision === "APPROVED" ? "Approved" : "Rejected"}</strong> by {app.reviewerName ?? "an admin"} on{" "}
-          {new Date(app.review.reviewedAt).toLocaleString()}
+          {formatDateTime(app.review.reviewedAt)}
           {app.reviewNotes && (
             <p className="mt-1">
               {app.review.decision === "APPROVED" ? "Internal notes" : "Reason"}: {app.reviewNotes}
@@ -193,7 +194,7 @@ export default function AdminApplicationDetailPage() {
               ["Reference", app.carrierReference],
               ["Carrier response", app.carrierMessage],
               ["Submission attempts", String(app.submissionAttempts)],
-              ["Submitted", app.submittedAt && new Date(app.submittedAt).toLocaleString()],
+              ["Submitted", app.submittedAt && formatDateTime(app.submittedAt)],
               [
                 "Commission",
                 app.commission ? `${formatCents(app.commission.amountCents)} · ${app.commission.status.toLowerCase()}` : "None",
@@ -258,7 +259,7 @@ export default function AdminApplicationDetailPage() {
               <li key={r.id} className="py-2">
                 <span className="font-medium">{r.requestedTypes.map((t) => DOCUMENT_TYPE_LABELS[t]).join(", ")}</span>{" "}
                 <span className="text-xs text-gray-500">
-                  ({DOCUMENT_REQUEST_STATUS_LABELS[r.status].toLowerCase()}) · {r.agentName} · {new Date(r.createdAt).toLocaleDateString()}
+                  ({DOCUMENT_REQUEST_STATUS_LABELS[r.status].toLowerCase()}) · {r.agentName} · {formatDate(r.createdAt)}
                 </span>
                 <p className="text-gray-700">“{r.message}”</p>
               </li>

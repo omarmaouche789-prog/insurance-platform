@@ -12,10 +12,9 @@ import {
   type CarrierCallMeta,
   type CarrierSubmissionResult,
 } from "../../integrations/carrierSubmission";
-import { email } from "../../integrations/email";
 import { emailTemplates } from "../../integrations/emailTemplates";
 import { commissionAmountCents } from "../agent/commissions";
-import { sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
+import { sendNotificationEmail, sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
 
 type SubmittableApplication = Application & {
   plan: Plan & { carrier: Carrier };
@@ -191,7 +190,7 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
       opts.auditAction === "application.resubmit"
         ? emailTemplates.resubmissionOutcome({ ...who, accepted, confirmationNumber: result.reference })
         : emailTemplates.carrierNeedsInfo(who);
-    await email.send({ to: app.user.email, ...template });
+    await sendNotificationEmail({ to: app.user.email, ...template }, opts.auditAction === "application.resubmit" ? "resubmission outcome" : "carrier needs info");
   }
 
   await recordAuditEvent({

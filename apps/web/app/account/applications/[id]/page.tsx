@@ -9,6 +9,7 @@ import { useAuth } from "../../../../lib/auth-context";
 import { apiFetch, describeApiError } from "../../../../lib/api";
 import { ApplicationStatusBadge } from "../../../../components/applications/ApplicationStatusBadge";
 import { DocumentUploadRow } from "../../../../components/applications/DocumentUploadRow";
+import { formatDate, formatDateTime } from "../../../../lib/format";
 
 // The applicant's view of an application after it leaves the wizard: status,
 // their agent, and any documents the agent has asked for.
@@ -60,13 +61,13 @@ export default function ApplicationStatusPage() {
 
       {app.review?.decision === "APPROVED" && (
         <p className="rounded bg-green-50 px-4 py-3 text-sm text-green-900">
-          <strong>Approved</strong> on {new Date(app.review.reviewedAt).toLocaleDateString()}. Your carrier has been
+          <strong>Approved</strong> on {formatDate(app.review.reviewedAt)}. Your carrier has been
           notified to finalize coverage.
         </p>
       )}
       {app.review?.decision === "REJECTED" && (
         <p className="rounded bg-red-50 px-4 py-3 text-sm text-red-900">
-          <strong>Not approved</strong> on {new Date(app.review.reviewedAt).toLocaleDateString()}
+          <strong>Not approved</strong> on {formatDate(app.review.reviewedAt)}
           {app.review.reason && <>: {app.review.reason}</>}. Contact your agent about other plan options.
         </p>
       )}
@@ -89,7 +90,7 @@ export default function ApplicationStatusPage() {
             <blockquote key={r.id} className="border-l-2 border-amber-400 pl-3 text-sm text-amber-900">
               “{r.message}”
               <span className="block text-xs text-amber-800">
-                {r.agentName} · {new Date(r.createdAt).toLocaleDateString()}
+                {r.agentName} · {formatDate(r.createdAt)}
               </span>
             </blockquote>
           ))}
@@ -113,7 +114,7 @@ export default function ApplicationStatusPage() {
             ["Applicant", `${app.personal.firstName} ${app.personal.lastName}`],
             ["Your agent", app.agent ? `${app.agent.firstName} ${app.agent.lastName} · ${app.agent.email}` : "Being assigned"],
             ["Documents", app.documents.map((d) => DOCUMENT_TYPE_LABELS[d.type]).join(", ") || "None yet"],
-            ["Submitted", app.submittedAt ? new Date(app.submittedAt).toLocaleString() : "—"],
+            ["Submitted", app.submittedAt ? formatDateTime(app.submittedAt) : "—"],
           ].map(([label, value]) => (
             <div key={label} className="flex justify-between gap-4 px-4 py-2">
               <dt className="text-gray-600">{label}</dt>

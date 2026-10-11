@@ -1,20 +1,102 @@
-const DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
-const DATE_TIME = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-});
+import type { DateFormat, SystemSettingsDTO, TimeFormat } from "@insurance/shared";
+import { SYSTEM_SETTINGS_DEFAULTS, TIMEZONES } from "@insurance/shared";
+
+// Dates and times are shown in the platform's timezone and formats from
+// System Settings → Localization. SiteSettingsProvider calls
+// setDisplayPreferences() once the settings load (and from a local cache on
+// later visits); until then the defaults apply.
+interface DisplayPreferences {
+  timeZone: string;
+  dateFormat: DateFormat;
+  timeFormat: TimeFormat;
+}
+
+function toPreferences(l: SystemSettingsDTO["localization"]): DisplayPreferences {
+  return { timeZone: TIMEZONES[l.timezone]?.iana ?? "UTC", dateFormat: l.dateFormat, timeFormat: l.timeFormat };
+}
+
+let prefs = toPreferences(SYSTEM_SETTINGS_DEFAULTS.localization);
+let partsFormatter = makePartsFormatter(prefs.timeZone);
+
+function makePartsFormatter(timeZone: string): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+}
+
+export function setDisplayPreferences(localization: SystemSettingsDTO["localization"]): void {
+  const next = toPreferences(localization);
+  if (next.timeZone !== prefs.timeZone) partsFormatter = makePartsFormatter(next.timeZone);
+  prefs = next;
+}
+
+export function getDisplayPreferences(): Readonly<DisplayPreferences> {
+  return prefs;
+}
+
+const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+// Calendar parts of an instant in the platform timezone. A bare
+// "YYYY-MM-DD" (date of birth, license expiry) is a calendar date already,
+// so it's never shifted by the timezone.
+function parts(iso: string): { y: string; m: string; d: string; hh: number; mm: string } | null {
+  const bare = DATE_ONLY.exec(iso);
+  if (bare) return { y: bare[1], m: bare[2], d: bare[3], hh: 0, mm: "00" };
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const p = Object.fromEntries(partsFormatter.formatToParts(date).map((x) => [x.type, x.value]));
+  return { y: p.year, m: p.month, d: p.day, hh: Number(p.hour) % 24, mm: p.minute };
+}
+
+function datePart(x: { y: string; m: string; d: string }, format: DateFormat): string {
+  if (format === "DD/MM/YYYY") return `${x.d}/${x.m}/${x.y}`;
+  if (format === "YYYY-MM-DD") return `${x.y}-${x.m}-${x.d}`;
+  return `${x.m}/${x.d}/${x.y}`;
+}
+
+function timePart(hh: number, mm: string, format: TimeFormat): string {
+  if (format === "24h") return `${String(hh).padStart(2, "0")}:${mm}`;
+  return `${hh % 12 === 0 ? 12 : hh % 12}:${mm} ${hh < 12 ? "AM" : "PM"}`;
+}
+
+export function formatDate(iso: string | Date | null | undefined): string {
+  if (!iso) return "—";
+  const x = parts(typeof iso === "string" ? iso : iso.toISOString());
+  return x ? datePart(x, prefs.dateFormat) : "—";
+}
+
+export function formatTime(iso: string | Date | null | undefined): string {
+  if (!iso) return "—";
+  const x = parts(typeof iso === "string" ? iso : iso.toISOString());
+  return x ? timePart(x.hh, x.mm, prefs.timeFormat) : "—";
+}
+
+export function formatDateTime(iso: string | Date | null | undefined): string {
+  if (!iso) return "—";
+  const x = parts(typeof iso === "string" ? iso : iso.toISOString());
+  return x ? `${datePart(x, prefs.dateFormat)} ${timePart(x.hh, x.mm, prefs.timeFormat)}` : "—";
+}
+
+// Example output for the settings page.
+export function previewDateTime(localization: SystemSettingsDTO["localization"], at: Date): string {
+  const saved = prefs;
+  const savedFormatter = partsFormatter;
+  setDisplayPreferences(localization);
+  try {
+    return formatDateTime(at);
+  } finally {
+    prefs = saved;
+    partsFormatter = savedFormatter;
+  }
+}
+
 const RELATIVE = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
-
-export function formatDate(iso: string | null | undefined): string {
-  return iso ? DATE.format(new Date(iso)) : "—";
-}
-
-export function formatDateTime(iso: string | null | undefined): string {
-  return iso ? DATE_TIME.format(new Date(iso)) : "—";
-}
 
 // "3 minutes ago", "in 2 days", "yesterday".
 export function formatRelative(iso: string | null | undefined, now = Date.now()): string {
