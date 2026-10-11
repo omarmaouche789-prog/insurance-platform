@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, CheckCheck } from "lucide-react";
 import type { NotificationDTO, NotificationListResponseDTO } from "@insurance/shared";
@@ -12,12 +13,14 @@ import { cn } from "./ui/cn";
 
 const POLL_MS = 20_000;
 
+export const NOTIFICATIONS_CHANGED = "notifications:changed";
+
 // In-app notifications. Polls (only while the tab is visible) rather than
 // holding a socket open, which works across any number of API instances and
 // through the Next.js /api proxy. New arrivals since the last poll pop a toast,
 // which is the "live" alert agents get when an applicant uploads a document.
 export function NotificationBell() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
   const router = useRouter();
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -48,9 +51,13 @@ export function NotificationBell() {
     const timer = setInterval(() => void load(), POLL_MS);
     const onVisible = () => void load();
     document.addEventListener("visibilitychange", onVisible);
+    // The agent Notification Center announces reads and deletes so the badge
+    // updates right away instead of at the next poll.
+    window.addEventListener(NOTIFICATIONS_CHANGED, onVisible);
     return () => {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener(NOTIFICATIONS_CHANGED, onVisible);
     };
   }, [load]);
 
@@ -139,6 +146,15 @@ export function NotificationBell() {
                 </li>
               ))}
             </ul>
+          )}
+          {user?.role === "AGENT" && (
+            <Link
+              href="/agent/notifications"
+              onClick={() => setOpen(false)}
+              className="block border-t border-gray-100 px-4 py-2.5 text-center text-sm font-medium text-primary-navy hover:bg-gray-50 dark:text-[#7da3d8]"
+            >
+              View all notifications
+            </Link>
           )}
         </div>
       )}

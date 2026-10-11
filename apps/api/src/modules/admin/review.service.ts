@@ -18,6 +18,7 @@ import { emailTemplates } from "../../integrations/emailTemplates";
 import { CarrierSubmissionError } from "../../integrations/carrierSubmission";
 import { recordCarrierResponse } from "../applications/carrierSubmit";
 import { sendNotificationEmail, sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
+import { notify } from "../notifications/notifications.service";
 import { FULL_INCLUDE, type FullApplication } from "../applications/applications.service";
 import { isAwaitingReview } from "../applications/applications.validation";
 import { toAgentApplicationDTO } from "../agent/agent.service";
@@ -143,6 +144,20 @@ async function recordDecision(
   });
 }
 
+// In-app notice to the assigned agent. The rejection reason is shown on the
+// application page, not copied into the notification.
+async function notifyAgentOfDecision(app: FullApplication, decision: "APPROVED" | "REJECTED"): Promise<void> {
+  if (!app.agentId) return;
+  const name = `${app.firstName} ${app.lastName}`;
+  await notify(app.agentId, {
+    type: "application.status",
+    title: decision === "APPROVED" ? `${name}'s application was approved` : `${name}'s application was not approved`,
+    body: decision === "APPROVED" ? "An admin approved it. Your commission is now earned." : "An admin rejected it. Open the application to see the reason.",
+    link: `/agent/applications/${app.id}`,
+    applicationId: app.id,
+  });
+}
+
 export async function approveApplication(
   adminId: string,
   id: string,
@@ -180,6 +195,7 @@ export async function approveApplication(
       meta: known?.meta,
     });
   }
+  await notifyAgentOfDecision(app, "APPROVED");
   await sendTemplatedEmail("APPLICATION_APPROVED", app.user.email, id, {
     userName: app.firstName,
     appId: applicationReference(id),
@@ -223,6 +239,7 @@ export async function rejectApplication(
       "rejection (agent copy)",
     );
   }
+  await notifyAgentOfDecision(app, "REJECTED");
   await sendTemplatedEmail("APPLICATION_REJECTED", app.user.email, id, {
     userName: app.firstName,
     appId: applicationReference(id),

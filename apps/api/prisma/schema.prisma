@@ -173,17 +173,22 @@ model PasswordResetToken {
 // In-app notifications (bell in the portal header). Bodies are shown only
 // after sign-in, but still stay PHI-light: names and a link, no health data.
 model Notification {
-  id        String    @id @default(uuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      String
-  title     String
-  body      String?
-  link      String?
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
+  id            String       @id @default(uuid())
+  userId        String
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String
+  title         String
+  body          String?
+  link          String?
+  // The application it's about, when there is one (SetNull keeps the
+  // notification if the application is ever removed).
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+  readAt        DateTime?
+  createdAt     DateTime     @default(now())
 
   @@index([userId, readAt, createdAt])
+  @@index([userId, type, createdAt])
   @@map("notifications")
 }
 
@@ -370,6 +375,7 @@ model Application {
   documents        ApplicationDocument[]
   documentRequests DocumentRequest[]
   commission       Commission?
+  notifications    Notification[]
   followUps        FollowUp[]
   notes            ApplicationNote[]
 

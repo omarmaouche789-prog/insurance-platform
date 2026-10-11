@@ -186,6 +186,15 @@ export async function createApplication(
     metadata: { agentId },
     req,
   });
+  if (app.agentId) {
+    await notify(app.agentId, {
+      type: "application.assigned",
+      title: `New application assigned: ${app.firstName} ${app.lastName}`,
+      body: `${app.plan.name} · ZIP ${app.zipCode ?? "—"}`,
+      link: `/agent/applications/${app.id}`,
+      applicationId: app.id,
+    });
+  }
   if (app.agent) {
     await sendTemplatedEmail("AGENT_ASSIGNED", app.user.email, app.id, {
       userName: app.firstName,

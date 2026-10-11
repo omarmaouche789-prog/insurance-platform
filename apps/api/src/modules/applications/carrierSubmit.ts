@@ -15,6 +15,7 @@ import {
 import { emailTemplates } from "../../integrations/emailTemplates";
 import { commissionAmountCents } from "../agent/commissions";
 import { sendNotificationEmail, sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
+import { notify } from "../notifications/notifications.service";
 
 type SubmittableApplication = Application & {
   plan: Plan & { carrier: Carrier };
@@ -70,6 +71,24 @@ export async function recordCarrierResponse(
   });
 }
 
+// Tells the assigned agent what the carrier said, unless the agent is the one
+// who just submitted (they see the outcome on screen).
+async function notifyAgentOfCarrierResponse(
+  app: SubmittableApplication,
+  actorUserId: string,
+  outcome: "ACCEPTED" | "REJECTED" | "ERROR",
+  reference: string | null,
+): Promise<void> {
+  if (!app.agentId || app.agentId === actorUserId) return;
+  const name = `${app.firstName} ${app.lastName}`;
+  const copy = {
+    ACCEPTED: { title: `Carrier accepted ${name}'s application`, body: reference ? `Confirmation ${reference}. It's now waiting for admin review.` : "It's now waiting for admin review." },
+    REJECTED: { title: `Carrier needs more information for ${name}`, body: "Open the application to see the carrier's message and resubmit." },
+    ERROR: { title: `Carrier couldn't be reached for ${name}`, body: "The submission didn't go through. It can be retried." },
+  }[outcome];
+  await notify(app.agentId, { type: "carrier.response", ...copy, link: `/agent/applications/${app.id}`, applicationId: app.id });
+}
+
 // Sends an application to its carrier and records the outcome. Used both for
 // the applicant's first submission and an agent's resubmission.
 export async function sendToCarrier(app: SubmittableApplication, opts: SendOptions): Promise<void> {
@@ -115,6 +134,7 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
       retryable: known?.retryable ?? true,
       meta: known?.meta,
     });
+    await notifyAgentOfCarrierResponse(app, opts.actorUserId, "ERROR", null);
     await recordAuditEvent({
       actorUserId: opts.actorUserId,
       action: `${opts.auditAction}.failed`,
@@ -175,6 +195,8 @@ export async function sendToCarrier(app: SubmittableApplication, opts: SendOptio
   } else {
     await applicationUpdate;
   }
+
+  await notifyAgentOfCarrierResponse(app, opts.actorUserId, accepted ? "ACCEPTED" : "REJECTED", result.reference);
 
   const who = { firstName: app.firstName, applicationId: app.id };
   if (opts.auditAction === "application.submit" && accepted) {

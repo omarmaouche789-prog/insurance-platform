@@ -133,6 +133,12 @@ describe("POST /api/admin/applications/:id/approve", () => {
       where: { applicationId: "app-1", status: "PENDING" },
       data: { status: "EARNED" },
     });
+    expect(prisma.notification.create.mock.calls[0][0].data).toMatchObject({
+      userId: "agent-1",
+      type: "application.status",
+      title: "Uma User's application was approved",
+      applicationId: "app-1",
+    });
     expect(carrier.notifyDecision).toHaveBeenCalledWith(
       expect.objectContaining({ carrierCode: "BLUEPEAK", carrierReference: "BLUEPEAK-AAAA1111", decision: "APPROVED" }),
     );

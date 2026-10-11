@@ -121,7 +121,9 @@ describe("POST /api/applications", () => {
     // 10001 resolves to NY via the mock ZIP adapter.
     expect(prisma.user.findMany.mock.calls[0][0].where.agentProfile.regions).toEqual({ has: "NY" });
     expect(prisma.application.create.mock.calls[0][0].data.agentId).toBe("agent-free");
-    // The applicant is introduced to their agent.
+    // The agent is notified of the new assignment…
+    expect(prisma.notification.create.mock.calls[0][0].data).toMatchObject({ userId: "agent-free", type: "application.assigned" });
+    // …and the applicant is introduced to their agent.
     expect(mailer.send).toHaveBeenCalledOnce();
     expect(mailer.send.mock.calls[0][0]).toMatchObject({ to: "user@example.com", subject: "Meet your licensed insurance agent" });
     expect(mailer.send.mock.calls[0][0].text).toContain("Alex Agent");
@@ -243,6 +245,13 @@ describe("POST /api/applications/:id/submit", () => {
       data: expect.objectContaining({ agentId: "agent-1", premiumCents: 46800, rateBps: 500, amountCents: 28080 }),
     });
     expect(prisma.$transaction).toHaveBeenCalledOnce();
+    // The assigned agent hears what the carrier said.
+    expect(prisma.notification.create.mock.calls[0][0].data).toMatchObject({
+      userId: "agent-1",
+      type: "carrier.response",
+      applicationId: "app-1",
+      link: "/agent/applications/app-1",
+    });
   });
 
   it("emails an enrollment confirmation and audits the carrier response", async () => {

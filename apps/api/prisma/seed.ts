@@ -231,6 +231,39 @@ async function seedEmailTemplates(): Promise<number> {
   return count;
 }
 
+// Demo only: a few Notification Center entries for the test agent, built
+// from their demo applications so every link opens a real application.
+// Skipped if the agent already has notifications.
+async function seedDemoNotifications(agentId: string): Promise<number> {
+  if (await prisma.notification.count({ where: { userId: agentId } })) return 0;
+  const apps = await prisma.application.findMany({
+    where: { agentId },
+    orderBy: { createdAt: "desc" },
+    take: 6,
+    include: { plan: { include: { carrier: true } } },
+  });
+  const now = Date.now();
+  const data = apps.flatMap((a, i) => {
+    const name = `${a.firstName} ${a.lastName}`;
+    const base = { userId: agentId, link: `/agent/applications/${a.id}`, applicationId: a.id };
+    const at = (hours: number) => new Date(now - (i * 26 + hours) * 3_600_000);
+    const rows = [
+      { ...base, type: "application.assigned", title: `New application assigned: ${name}`, body: `${a.plan.name} · ZIP ${a.zipCode ?? "—"}`, createdAt: at(30), readAt: i > 1 ? at(29) : null },
+    ];
+    if (a.submissionStatus === "ACCEPTED") {
+      rows.push({ ...base, type: "carrier.response", title: `Carrier accepted ${name}'s application`, body: `${a.plan.carrier.name} confirmation ${a.carrierReference ?? "—"}.`, createdAt: at(8), readAt: i > 2 ? at(7) : null });
+    }
+    if (a.status === "APPROVED" || (a.status === "REJECTED" && a.reviewedAt)) {
+      const approved = a.status === "APPROVED";
+      rows.push({ ...base, type: "application.status", title: `${name}'s application was ${approved ? "approved" : "not approved"}`, body: approved ? "An admin approved it. Your commission is now earned." : "An admin rejected it. Open the application to see the reason.", createdAt: at(2), readAt: null });
+    }
+    return rows;
+  });
+  if (!data.length) return 0;
+  const { count } = await prisma.notification.createMany({ data });
+  return count;
+}
+
 async function main() {
   if (process.env.NODE_ENV === "production") {
     throw new Error("Refusing to seed: the seed creates test accounts with the password '123'.");
@@ -247,6 +280,7 @@ async function main() {
   if (process.env.SEED_DEMO_DATA === "true") {
     const demoUsers = await seedDemoHistory([agent.id], admin.id, passwordHash);
     console.log(`Seeded ${demoUsers} demo users with application history (SEED_DEMO_DATA=true)`);
+    console.log(`Seeded ${await seedDemoNotifications(agent.id)} demo notifications for ${agent.email}`);
   }
 
   console.log(`Seeded ${planCount} plans across ZIPs: ${SEED_ZIPS.join(", ")}`);

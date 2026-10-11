@@ -19,6 +19,7 @@ import { email } from "../../integrations/email";
 import { emailTemplates } from "../../integrations/emailTemplates";
 import { findAgentForZip } from "../agent/assignment";
 import { sendTemplatedEmail } from "../emailTemplates/emailTemplates.service";
+import { notify } from "../notifications/notifications.service";
 import { getCommissions } from "../agent/agent.service";
 import { emptyCommissionTotals, loadAgentPerformance } from "../agent/performance";
 import { issuePasswordResetToken, RESET_TOKEN_TTL_HOURS } from "../security/passwordReset.service";
@@ -295,7 +296,7 @@ export async function deactivateAgent(
   if (opts.reassignOpen) {
     const open = await prisma.application.findMany({
       where: { agentId: id, ...REASSIGNABLE },
-      select: { id: true, zipCode: true, firstName: true, status: true, user: { select: { email: true } } },
+      select: { id: true, zipCode: true, firstName: true, lastName: true, status: true, user: { select: { email: true } } },
     });
     for (const app of open) {
       // findAgentForZip only considers active agents, so this agent is excluded.
@@ -307,6 +308,13 @@ export async function deactivateAgent(
       });
       if (nextAgentId) {
         reassigned += 1;
+        await notify(nextAgentId, {
+          type: "application.assigned",
+          title: `Application reassigned to you: ${app.firstName} ${app.lastName ?? ""}`.trim(),
+          body: "Its previous agent was deactivated.",
+          link: `/agent/applications/${app.id}`,
+          applicationId: app.id,
+        });
         if (updated.agent) {
           await sendTemplatedEmail("AGENT_ASSIGNED", app.user.email, app.id, {
             userName: app.firstName,

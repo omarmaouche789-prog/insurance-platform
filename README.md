@@ -53,6 +53,10 @@ Two tabs.
 
 **SMS Templates** lists the text messages (welcome, document request, submitted, approved, not approved, status update) with an editor: insert `{userName}`, `{appId}` or `{status}`, see a live phone preview with character, segment and encoding counts, switch a template on or off, save, reset to the default, and send a test to any number. Tests go through Twilio when `TWILIO_*` is configured and are written to the API log otherwise. SMS templates aren't sent automatically by any workflow yet.
 
+### Agent Notification Center (`/agent/notifications`)
+
+Agents see every notification about their work, newest first, 20 per page: new or reassigned applications (*Assignment*), admin approvals and rejections (*Status Update*), carrier accepted / needs more information / couldn't be reached (*Carrier Response*), and applicant uploads against their document requests (*Document Request*). *Message* is reserved for messaging, which doesn't exist yet; account and reminder notices show as *Other*. Filter by type and read status, mark one, a selection, or everything as read, delete, and open the related application (which marks it read). Unread items have an orange marker, and the header bell (which now links here) updates immediately. These are the same in-app notifications the bell shows, stored in `notifications` with an optional link to the application. Notifications never include rejection reasons or health details: the application page has those.
+
 ### System settings (`/admin/settings`)
 
 Four tabs. Every admin can view; only SUPER admins can change anything (OPERATIONS and the other sub-roles see it read-only). Settings live in `system_settings`, one row per setting (`section` + `key` + JSON `value`, who changed it and when); a missing row means the default. Every change is audit-logged (`admin.settings.update`, or `admin.settings.feature_toggle` for switches) with the before and after values, and every API instance picks it up within about 10 seconds; open browser tabs within a minute.
@@ -150,6 +154,7 @@ Migrations live in `apps/api/prisma/migrations` and are applied with `npm run -w
 | `GET/POST /api/agent/applications/:id/notes` | agent | Internal notes (admins read via `/api/admin/applications/:id/notes`) |
 | `GET /api/agent/performance` | agent | Own performance |
 | `GET /api/notifications` · `POST /:id/read` · `POST /read-all` | signed in | In-app notifications |
+| `GET /api/agent/notifications?type=&read=&page=` · `GET /unread-count` · `PATCH /:id/read` · `PATCH /bulk/read` (`{ ids }`) · `PATCH /read-all` · `DELETE /:id` | agent | Agent Notification Center (own notifications only) |
 | `GET /api/admin/analytics/{users,approvals,revenue,funnel,export}` | admin | Analytics; `from`/`to` (YYYY-MM-DD), `interval=week\|month` |
 | `GET/POST /api/admin/cms/posts` · `GET/PUT/DELETE /:id` · `POST/DELETE /:id/image` | admin / SUPER·OPS | Blog CMS |
 | `GET /api/admin/email-templates` · `GET /:id` · `PUT /:id` · `POST /:id/revert` | admin / SUPER·OPS | Editable email templates (PUT takes `{ subject, body }`) |

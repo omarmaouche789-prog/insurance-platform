@@ -16,6 +16,7 @@ import { adminCmsRouter, blogRouter } from "./modules/cms/cms.routes";
 import { notificationsRouter } from "./modules/notifications/notifications.routes";
 import { plansRouter } from "./modules/plans/plans.routes";
 import { securityRouter } from "./modules/security/security.routes";
+import { agentNotificationsRouter } from "./modules/notifications/agentNotifications.routes";
 import { twoFactorGate } from "./modules/security/twoFactorGate";
 import { requireFeature } from "./modules/settings/requireFeature";
 import { maintenanceGate } from "./modules/settings/maintenance";
@@ -47,6 +48,7 @@ export function createApp() {
   app.use("/api/plans", plansRouter);
   app.use("/api/blog", requireFeature("blog", { status: 404, message: "Not found" }), blogRouter);
   app.use("/api/applications", applicationsRouter);
+  app.use("/api/agent/notifications", agentNotificationsRouter);
   app.use("/api/agent", agentRouter);
   app.use("/api/admin/users", adminUsersRouter);
   app.use("/api/admin/agents", adminAgentsRouter);
